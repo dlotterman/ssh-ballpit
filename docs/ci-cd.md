@@ -49,16 +49,19 @@ git config --local core.hooksPath .githooks
 
 ## GitHub Actions
 
-The [CI and container workflow](../.github/workflows/ci.yml) runs on every push.
-Its CI job scans pushed commits with Gitleaks, scans a snapshot of the committed
-source with Grype (failing on High or Critical findings), then runs Go tests and
-vet. These checks run even for documentation-only pushes.
+The [CI and container workflow](../.github/workflows/ci.yml) runs CI on every
+push and when a pull request opens, reopens, or receives a new commit. Its CI
+job scans commits with Gitleaks, scans a snapshot of the committed source with
+Grype (failing on High or Critical findings), then runs Go tests and vet. These
+checks run even for documentation-only changes.
 
-After CI passes, a push to `main` builds and pushes a container only when the
-push changes `Containerfile`, `.containerignore`, `.dockerignore`, `go.mod`,
-`go.sum`, `cmd/`, or `examples/`. Other files, including README and docs, do not
-trigger a container publish. The build uses Docker Buildx for `linux/amd64` and
-`linux/arm64` and publishes these tags to Docker Hub:
+Merging a pull request into `main` runs those checks again on the resulting
+commit. If they pass, the workflow builds and pushes a container only when the
+merged pull request changed `Containerfile`, `.containerignore`,
+`.dockerignore`, `go.mod`, `go.sum`, `cmd/`, or `examples/`. Other files,
+including README and docs, do not trigger a container publish. A direct push
+to `main` runs CI but does not publish an image. The build uses Docker Buildx
+for `linux/amd64` and `linux/arm64` and publishes these tags to Docker Hub:
 
 ```text
 dlotterman/ssh-ballpit:latest
@@ -67,5 +70,5 @@ dlotterman/ssh-ballpit:sha-<full commit SHA>
 
 The publish job uses the repository's `DOCKERHUB_USERNAME` and
 `DOCKERHUB_TOKEN` secrets. It never runs after a failed CI job. The badges in
-the README show the CI and container job states; a documentation-only push
+the README show the CI and container job states; a documentation-only merge
 skips the container job.

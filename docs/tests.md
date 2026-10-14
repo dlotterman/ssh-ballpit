@@ -60,9 +60,11 @@ The [pre-commit hook](pre-commit.md) scans the staged diff with Gitleaks, scans
 a temporary checkout of the staged tree with Grype (failing on High or Critical
 findings), then runs the Go test and vet commands above on that checkout. The
 [GitHub Actions workflow](../.github/workflows/ci.yml) runs equivalent checks
-on every push. After they pass, an image-input change pushed to `main` builds
-and publishes the container. The Containerfile also runs Go tests and vet while
-building the image.
+on every push, on pull request updates, and on merged pull requests. After the
+merge checks pass, a pull request merged into `main` builds and publishes the
+container when it changed an image input. Direct pushes run CI without
+publishing. The Containerfile also runs Go tests and vet while building the
+image.
 
 These checks do not validate live LLM behavior, a deployed sshd, or the runtime
 container's OS packages. Grype's source scan covers dependency findings in the
