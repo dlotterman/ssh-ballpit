@@ -1,0 +1,7 @@
+/ssh-ballpit
+/bin/
+/config.json
+/host_key
+/chatgpt-credentials.json
+*.env
+/config/

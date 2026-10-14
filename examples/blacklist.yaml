@@ -1,0 +1,6 @@
+# Full-command Go regular expressions. Matches always deny, before cache/LLMs.
+# Simple invocations inside lists and pipelines are also checked.
+patterns:
+  - 'reboot'
+  # Glob-style "dnf *": also deny bare dnf, tabs, and multiline arguments.
+  - 'dnf(?:\s+(?s:.*))?'

@@ -1,0 +1,4 @@
+kind: gemini
+model: gemini-3.1-flash-lite
+api_key: REPLACE_WITH_YOUR_API_KEY
+threshold: 30

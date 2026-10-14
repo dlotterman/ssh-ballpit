@@ -1,0 +1,4 @@
+kind: openai
+model: YOUR_OPENAI_MODEL
+api_key: REPLACE_WITH_YOUR_API_KEY
+threshold: 30

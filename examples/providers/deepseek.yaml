@@ -1,0 +1,4 @@
+kind: deepseek
+model: deepseek-chat
+api_key: REPLACE_WITH_YOUR_API_KEY
+threshold: 30

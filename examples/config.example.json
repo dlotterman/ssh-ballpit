@@ -1,0 +1,26 @@
+{
+  "listen": "127.0.0.1:2222",
+  "host_key": "/etc/ssh-ballpit/host_key",
+  "authorized_keys": "/etc/ssh-ballpit/authorized_keys",
+  "backend": "127.0.0.1:22",
+  "backend_key": "/etc/ssh-ballpit/backend_key",
+  "known_hosts": "/etc/ssh-ballpit/known_hosts",
+  "users": {
+    "alice": {
+      "backend_user": "alice",
+      "fingerprints": ["SHA256:REPLACE_WITH_CLIENT_PUBLIC_KEY_FINGERPRINT"]
+    }
+  },
+  "providers": [
+    {
+      "name": "local-qwen",
+      "kind": "ollama",
+      "model": "Qwen2.5-Coder-7B-Instruct-GGUF-qwen2.5-coder-7b-instruct-q4_k_m:latest",
+      "endpoint": "http://ollama.example.net:13305",
+      "threshold": 30
+    }
+  ],
+  "review_seconds": 60,
+  "session_seconds": 300,
+  "max_connections": 32
+}

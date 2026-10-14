@@ -1,0 +1,4 @@
+kind: ollama
+model: Qwen2.5-Coder-7B-Instruct-GGUF-qwen2.5-coder-7b-instruct-q4_k_m:latest
+endpoint: http://ollama.example.net:13305
+threshold: 30

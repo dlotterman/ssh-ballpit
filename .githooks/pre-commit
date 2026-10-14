@@ -1,0 +1,32 @@
+#!/bin/sh
+set -eu
+
+# GO overrides a per-clone path; otherwise use go from PATH.
+if [ -z "${GO:-}" ]; then
+    GO=$(git config --local --get ssh-ballpit.go || true)
+fi
+GO=${GO:-go}
+for tool in gitleaks grype "$GO"; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+        echo "pre-commit: $tool is required; install it before committing" >&2
+        exit 1
+    fi
+done
+
+cd "$(git rev-parse --show-toplevel)"
+# Scan only the proposed commit.
+gitleaks git --pre-commit --staged --redact --no-banner
+
+umask 077
+snapshot=$(mktemp -d)
+cleanup() { rm -rf -- "$snapshot"; }
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+git checkout-index --all --prefix="$snapshot/"
+grype "dir:$snapshot" --fail-on high
+
+# Test the same staged tree, without an enclosing workspace or modified modules.
+cd "$snapshot"
+export GOWORK=off
+"$GO" test -mod=readonly -count=1 ./...
+"$GO" vet -mod=readonly ./...

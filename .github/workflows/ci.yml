@@ -1,0 +1,120 @@
+name: CI and container
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: CI
+    runs-on: ubuntu-latest
+    outputs:
+      build_needed: ${{ steps.changes.outputs.build_needed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Find image input changes
+        id: changes
+        env:
+          BEFORE: ${{ github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            git diff --name-only -z "$BEFORE" "$HEAD" > "$RUNNER_TEMP/changed-paths"
+          else
+            # The first push has no previous commit; inspect its complete tree.
+            git ls-tree -r --name-only -z "$HEAD" > "$RUNNER_TEMP/changed-paths"
+          fi
+          build_needed=false
+          while IFS= read -r -d '' path; do
+            case "$path" in
+              Containerfile|.containerignore|.dockerignore|go.mod|go.sum|cmd/*|examples/*)
+                build_needed=true
+                break
+                ;;
+            esac
+          done < "$RUNNER_TEMP/changed-paths"
+          echo "build_needed=$build_needed" >> "$GITHUB_OUTPUT"
+
+      - name: Install Gitleaks
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/gitleaks.tar.gz" \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  '"$RUNNER_TEMP/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Scan pushed commits for secrets
+        env:
+          BEFORE: ${{ github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            gitleaks git --redact --no-banner --log-opts="$BEFORE..$HEAD"
+          else
+            gitleaks git --redact --no-banner --log-opts="$HEAD"
+          fi
+
+      - name: Make source snapshot
+        run: |
+          mkdir -p "$RUNNER_TEMP/source"
+          git archive HEAD | tar -x -C "$RUNNER_TEMP/source"
+
+      - name: Scan source dependencies
+        uses: anchore/scan-action@v7
+        with:
+          path: ${{ runner.temp }}/source
+          fail-build: true
+          severity-cutoff: high
+
+      - name: Test
+        working-directory: ${{ runner.temp }}/source
+        env:
+          GOWORK: off
+        run: go test -mod=readonly -count=1 ./...
+
+      - name: Vet
+        working-directory: ${{ runner.temp }}/source
+        env:
+          GOWORK: off
+        run: go vet -mod=readonly ./...
+
+  publish:
+    name: Container build
+    needs: checks
+    if: github.ref == 'refs/heads/main' && needs.checks.outputs.build_needed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Containerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            dlotterman/ssh-ballpit:latest
+            dlotterman/ssh-ballpit:sha-${{ github.sha }}

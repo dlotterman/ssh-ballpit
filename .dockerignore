@@ -1,0 +1,9 @@
+**
+!Containerfile
+!.dockerignore
+!go.mod
+!go.sum
+!cmd
+!cmd/**
+!examples
+!examples/**

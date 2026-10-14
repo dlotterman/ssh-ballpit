@@ -1,0 +1,9 @@
+# Full-command Go regular expressions, not shell globs. Restart after changes.
+# Blacklist and static policy take precedence. Matches skip LLM review only
+# for a single simple command without assignments, redirections or expansions
+# other than pathname globs.
+patterns:
+  # Glob-style "ls -al /home/*": .* matches any suffix, including subdirectories.
+  - 'ls -al /home/.*'
+  # One exact command; extra arguments do not match.
+  - 'systemd-analyze --user verify'
