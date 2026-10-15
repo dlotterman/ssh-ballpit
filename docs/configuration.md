@@ -402,10 +402,22 @@ Enable the HTTP endpoint in `server.yaml`:
 metrics_listen: 127.0.0.1:2112
 ```
 
-Scrape `http://127.0.0.1:2112/metrics`. For a remote Prometheus server, bind to the
-host's trusted LAN address or `0.0.0.0:2112` instead. The endpoint is plain HTTP
-without authentication, so expose it only to your monitoring network. The existing
-`--network=host` Podman command needs no additional port mappings.
+Run the container from the directory containing `config/`:
+
+```sh
+podman run --rm --name ssh-ballpit --userns=keep-id --network=host \
+  -v "$PWD/config:/config:z" \
+  docker.io/dlotterman/ssh-ballpit:latest
+```
+
+With `--network=host`, the metrics listener uses the host's port directly;
+`-p 2112:2112` is not needed or used. Scrape
+`http://127.0.0.1:2112/metrics` from Prometheus on the same host. For a remote
+Prometheus server, set `metrics_listen` to the host's trusted LAN address and
+port (or `0.0.0.0:2112` to listen on all interfaces), then scrape that address.
+The endpoint is plain HTTP without authentication, so allow access only from
+your monitoring network. If an API provider uses `key_env`, add its `--env NAME`
+option before the image name; see [Provider YAML](#provider-yaml).
 
 Example Prometheus configuration (use this host's address):
 
@@ -510,6 +522,25 @@ Do not run scripts taken from untrusted logs. A replay can produce a different
 answer if model state or history changes. Approval-cache hits do not call providers
 and therefore produce no provider diagnostics. Use `providers-test` for a fresh
 review without SSH execution.
+
+If an Ollama diagnostic has `stage: "http_request"` and `http_status: 0`, the
+gateway did not receive an HTTP response. Its `transport_reason` describes a
+bounded network category such as `connection_refused`, `network_unreachable`,
+`timeout`, or `http_transport_error`; it does not report an SSH backend error.
+Check reachability from the gateway host, using the endpoint in the provider
+YAML:
+
+```sh
+ollama_endpoint='http://your-ollama-host:11434'
+curl --verbose --connect-timeout 3 --max-time 5 \
+  "$ollama_endpoint/api/version"
+```
+
+On the Ollama host, check that the service or proxy is running and listening
+on the configured address and port (`ss -ltnp`). If a local request succeeds
+but the gateway host cannot connect, check the listen address and network
+firewall. A failed provider review denies the command even when every other
+reviewer approves.
 
 `empty verdict content` means the provider returned no usable verdict text.
 `invalid verdict JSON` or `invalid verdict object` indicates malformed JSON or
