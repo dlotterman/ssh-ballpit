@@ -57,6 +57,10 @@ for production or dependable lab use.
 
 You break it you buy it.
 
+You probably want something more like [DCG](https://github.com/Dicklesworthstone/destructive_command_guard), [AgentSSH](https://github.com/Praeviso/AgentSSH), [WardGate](https://github.com/wardgate/wardgate), [agentsh](https://www.agentsh.org/) or [nono](https://github.com/nolabs-ai/nono).
+
+Nothing about this projects absolves the need for good SysAdmin and DevSecOps hygene.
+
 ## Run
 
 ### Set up once
