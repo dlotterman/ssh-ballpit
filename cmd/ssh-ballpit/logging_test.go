@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -103,6 +104,24 @@ func TestConnectionReasons(t *testing.T) {
 		got := connectionReason(tc.err)
 		if !strings.Contains(got, tc.want) || strings.Contains(got, "DO-NOT-LOG") {
 			t.Errorf("reason %q", got)
+		}
+	}
+}
+
+func TestProviderTransportReasons(t *testing.T) {
+	for _, tc := range []struct {
+		err  error
+		want string
+	}{
+		{&net.OpError{Op: "dial", Err: syscall.ECONNREFUSED}, "connection_refused"},
+		{&net.OpError{Op: "dial", Err: syscall.EHOSTUNREACH}, "network_unreachable"},
+		{&net.DNSError{Err: "lookup failed", Name: "secret.example"}, "dns_error"},
+		{context.DeadlineExceeded, "timeout"},
+		{errors.New("secret URL or peer response"), "http_transport_error"},
+	} {
+		got := providerTransportReason(tc.err)
+		if got != tc.want || strings.Contains(got, "secret") {
+			t.Errorf("provider transport reason: got %q, want %q", got, tc.want)
 		}
 	}
 }

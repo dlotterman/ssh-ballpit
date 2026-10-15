@@ -5,6 +5,20 @@
 
 Intercept and review SSH commands for safety by multiple LLMs.
 
+*Good* Agent:
+```
+$ ssh -p 2222 system_user@192.168.50.167 'uname -a'
+Linux b8 6.12.0-211.65.1.el10_2.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Oct 13 06:48:54 EDT 2026 x86_64 GNU/Linux
+Connection to 192.168.50.167 closed by remote host.
+```
+
+**Bad** Agent:
+```
+$ ssh -p 2222 system_user@192.168.50.167 'rm -rf /'
+denied: every configured reviewer must approve
+Connection to 192.168.50.167 closed by remote host
+```
+
 ## Motivation
 
 The author's environment has four types of computers:
@@ -128,4 +142,4 @@ the runtime container inventory, and regeneration instructions. Retain applicabl
 upstream license and NOTICE files when redistributing third-party components.
 
 This project is "vibe-coded". Instead of accepting contributions, the author
-encourages you to fork it or build your own.
+encourages you to fork it or build your own. Requests will be accomadated when possible.

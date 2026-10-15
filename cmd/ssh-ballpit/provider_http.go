@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand/v2"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -125,7 +128,7 @@ func askWithDiagnostics(ctx context.Context, provider Provider, user, command st
 	diagnostic.stage = "http_request"
 	resp, err := requestWithGeminiRetry(client, req, provider.Kind)
 	if err != nil {
-		diagnostic.transportReason = connectionReason(err)
+		diagnostic.transportReason = providerTransportReason(err)
 		return nil, fmt.Errorf("provider request failed")
 	}
 	defer resp.Body.Close()
@@ -151,6 +154,33 @@ func askWithDiagnostics(ctx context.Context, provider Provider, user, command st
 		answer, diagnostic.unwrapped = unwrapOllamaVerdict(answer)
 	}
 	return parseVerdict(answer)
+}
+
+// Raw HTTP transport errors can contain request details. Keep the diagnostic
+// reason bounded and separate from SSH connection errors.
+func providerTransportReason(err error) string {
+	var dns *net.DNSError
+	if errors.As(err, &dns) {
+		return "dns_error"
+	}
+	var network net.Error
+	if errors.As(err, &network) && network.Timeout() {
+		return "timeout"
+	}
+	switch {
+	case errors.Is(err, context.Canceled):
+		return "cancelled"
+	case errors.Is(err, syscall.ECONNREFUSED):
+		return "connection_refused"
+	case errors.Is(err, syscall.ENETUNREACH), errors.Is(err, syscall.EHOSTUNREACH):
+		return "network_unreachable"
+	case errors.Is(err, syscall.ECONNRESET):
+		return "connection_reset_by_peer"
+	case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
+		return "peer_disconnected"
+	default:
+		return "http_transport_error"
+	}
 }
 
 // providerAnswer unwraps each API's response and checks its completion marker.

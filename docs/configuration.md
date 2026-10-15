@@ -511,6 +511,25 @@ answer if model state or history changes. Approval-cache hits do not call provid
 and therefore produce no provider diagnostics. Use `providers-test` for a fresh
 review without SSH execution.
 
+If an Ollama diagnostic has `stage: "http_request"` and `http_status: 0`, the
+gateway did not receive an HTTP response. Its `transport_reason` describes a
+bounded network category such as `connection_refused`, `network_unreachable`,
+`timeout`, or `http_transport_error`; it does not report an SSH backend error.
+Check reachability from the gateway host, using the endpoint in the provider
+YAML:
+
+```sh
+ollama_endpoint='http://your-ollama-host:11434'
+curl --verbose --connect-timeout 3 --max-time 5 \
+  "$ollama_endpoint/api/version"
+```
+
+On the Ollama host, check that the service or proxy is running and listening
+on the configured address and port (`ss -ltnp`). If a local request succeeds
+but the gateway host cannot connect, check the listen address and network
+firewall. A failed provider review denies the command even when every other
+reviewer approves.
+
 `empty verdict content` means the provider returned no usable verdict text.
 `invalid verdict JSON` or `invalid verdict object` indicates malformed JSON or
 an unexpected structure (for example, prose, an array, or invalid fields). Ollama

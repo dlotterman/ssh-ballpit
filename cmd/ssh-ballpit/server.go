@@ -190,7 +190,7 @@ func handleSession(ctx context.Context, config Config, user, backendUser string,
 				config.metrics.commands.WithLabelValues(outcome).Inc()
 			}
 			fmt.Fprintln(ch.Stderr(), "denied:", decisionErr)
-			logger.Info("denied", "user", user, "command_sha256", hash, "reason", source)
+			logger.Info("denied", "command_sha256", hash, "reason", source)
 			finish(ch, 126)
 			return
 		}
@@ -201,7 +201,7 @@ func handleSession(ctx context.Context, config Config, user, backendUser string,
 			logger.Info("approval cache", "command_sha256", hash, "hit", hit, "safe", safe)
 			// Model reasons and provider response bodies stay out of logs.
 			for _, r := range results {
-				logger.Info("review", "user", user, "command_sha256", hash, "reviewer", r.Name, "safe", r.Safe, "error", r.Error)
+				logger.Info("review", "command_sha256", hash, "reviewer", r.Name, "safe", r.Safe, "error", r.Error)
 			}
 		}
 		if !safe {
