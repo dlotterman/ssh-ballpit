@@ -2,13 +2,20 @@ name: CI and container
 
 on:
   push:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_target:
+    types: [closed]
+    branches: [main]
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   checks:
     name: CI
+    if: github.event_name != 'pull_request_target' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
       build_needed: ${{ steps.changes.outputs.build_needed }}
@@ -16,6 +23,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
 
       - uses: actions/setup-go@v6
         with:
@@ -23,19 +31,22 @@ jobs:
 
       - name: Find image input changes
         id: changes
+        if: github.event_name == 'pull_request_target'
         env:
-          BEFORE: ${{ github.event.before }}
-          HEAD: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
         run: |
           set -euo pipefail
-          if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
-            git diff --name-only -z "$BEFORE" "$HEAD" > "$RUNNER_TEMP/changed-paths"
-          else
-            # The first push has no previous commit; inspect its complete tree.
-            git ls-tree -r --name-only -z "$HEAD" > "$RUNNER_TEMP/changed-paths"
-          fi
+          gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files?per_page=100" \
+            --jq '.[].filename' > "$RUNNER_TEMP/changed-paths"
           build_needed=false
-          while IFS= read -r -d '' path; do
+          # The API lists at most 3,000 files. Build if the PR exceeds that limit.
+          if [[ ! "$CHANGED_FILES" =~ ^[0-9]+$ ]] || (( 10#$CHANGED_FILES > 3000 )); then
+            build_needed=true
+          fi
+          while IFS= read -r path; do
             case "$path" in
               Containerfile|.containerignore|.dockerignore|go.mod|go.sum|cmd/*|examples/*)
                 build_needed=true
@@ -54,17 +65,30 @@ jobs:
           tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
-      - name: Scan pushed commits for secrets
+      - name: Scan commits for secrets
         env:
           BEFORE: ${{ github.event.before }}
           HEAD: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
-            gitleaks git --redact --no-banner --log-opts="$BEFORE..$HEAD"
-          else
-            gitleaks git --redact --no-banner --log-opts="$HEAD"
-          fi
+          case "$EVENT_NAME" in
+            push)
+              if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+                gitleaks git --redact --no-banner --log-opts="$BEFORE..$HEAD"
+              else
+                gitleaks git --redact --no-banner --log-opts="$HEAD"
+              fi
+              ;;
+            pull_request)
+              gitleaks git --redact --no-banner --log-opts="$BASE_SHA..$PR_HEAD_SHA"
+              ;;
+            pull_request_target)
+              gitleaks git --redact --no-banner --log-opts="$(git rev-parse HEAD)"
+              ;;
+          esac
 
       - name: Make source snapshot
         run: |
@@ -93,10 +117,12 @@ jobs:
   publish:
     name: Container build
     needs: checks
-    if: github.ref == 'refs/heads/main' && needs.checks.outputs.build_needed == 'true'
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.merged == true && needs.checks.outputs.build_needed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
 
       - uses: docker/setup-qemu-action@v3
 
@@ -117,4 +143,4 @@ jobs:
           push: true
           tags: |
             dlotterman/ssh-ballpit:latest
-            dlotterman/ssh-ballpit:sha-${{ github.sha }}
+            dlotterman/ssh-ballpit:sha-${{ github.event.pull_request.merge_commit_sha }}

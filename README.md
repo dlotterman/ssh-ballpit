@@ -3,11 +3,7 @@
 [![CI](https://img.shields.io/github/check-runs/dlotterman/ssh-ballpit/main?nameFilter=CI&label=CI)](https://github.com/dlotterman/ssh-ballpit/actions/workflows/ci.yml)
 [![Container build](https://img.shields.io/github/check-runs/dlotterman/ssh-ballpit/main?nameFilter=Container%20build&label=container%20build)](https://github.com/dlotterman/ssh-ballpit/actions/workflows/ci.yml)
 
-SSH commands pass static checks and optional YAML blacklist/whitelist rules before
-being forwarded to local sshd. Whitelisted commands skip LLM review; other commands
-need approval from **every configured LLM**, or a cached unanimous approval.
-Any rejection or failed review blocks execution. Existing sshd stays unchanged.
-Supports individual commands, not interactive shells or ProxyJump.
+Intercept and review SSH commands for safety by multiple LLMs.
 
 ## Motivation
 
@@ -45,14 +41,19 @@ for production or dependable lab use.
 
 You break it you buy it.
 
-## Set up once
+## Run
+
+### Set up once
+
+From the directory where you want to keep configuration, create a private bind
+mount and use the published [Docker Hub image](https://hub.docker.com/r/dlotterman/ssh-ballpit)
+to generate starter files:
 
 ```sh
-podman build -t localhost/ssh-ballpit .
-mkdir -p config/providers
-chmod 700 config
-cp examples/server.yaml config/server.yaml
-cp examples/providers/ollama.yaml config/providers/
+install -d -m 700 config
+podman run --pull=always --rm --userns=keep-id \
+  -v "$PWD/config:/config:z" \
+  docker.io/dlotterman/ssh-ballpit:latest configure
 ```
 
 Edit `config/server.yaml` with your SSH username and client key fingerprint.
@@ -62,39 +63,32 @@ Put these files in `config/`:
 - `backend_key`: private key already accepted by your local sshd; use mode `0600`.
 - `known_hosts`: verified host key for your local sshd.
 
-To enable command rules, copy and edit the examples:
+`configure` also creates example [whitelist and blacklist rules](docs/command-rules.md).
+Edit or remove either file before starting the gateway.
 
-```sh
-cp examples/whitelist.yaml examples/blacklist.yaml config/
-```
+### Providers
 
-The whitelist includes `ls -al /home/.*` (regex equivalent of `ls -al /home/*`)
-and the exact command `systemd-analyze --user verify`. The blacklist includes
-exact `reboot`, plus `dnf` with any arguments. Blacklist wins; static checks always apply.
-Missing files disable that list. See [command rules](docs/configuration.md#command-whitelist-and-blacklist)
-for matching semantics and limits.
-
-## Choose providers
-
-Copy the providers you want from [`examples/providers`](examples/providers) into
-`config/providers/`, then edit their YAML. **Every `.yaml` or `.yml` file there is
-required to approve each command that reaches model review.** Remove a file to
-disable that reviewer.
+`configure` creates `config/providers/ollama.yaml`. Edit it or copy other
+[`provider examples`](examples/providers) into `config/providers/`.
+**Every `.yaml` or `.yml` file there is required to approve each command that
+reaches model review.** Remove a file to disable that reviewer.
 
 Ollama's endpoint URL lives in `ollama.yaml`. API providers have an `api_key` field.
 For OpenAI subscription access, copy `openai-subscription.yaml` and register once:
 
 ```sh
-podman run --rm -it --userns=keep-id -v "$PWD/config:/config:z" localhost/ssh-ballpit login-openai
+podman run --rm -it --userns=keep-id -v "$PWD/config:/config:z" \
+  docker.io/dlotterman/ssh-ballpit:latest login-openai
 ```
 
 Enter the printed one-time code at the URL on another device. Login state is
 saved in `config/state/codex` and reused by the daemon and host binary.
 
-## Run
+### Start gateway
 
 ```sh
-podman run --rm --name ssh-ballpit --userns=keep-id --network=host -v "$PWD/config:/config:z" localhost/ssh-ballpit
+podman run --rm --name ssh-ballpit --userns=keep-id --network=host \
+  -v "$PWD/config:/config:z" docker.io/dlotterman/ssh-ballpit:latest
 ```
 
 ```sh
@@ -113,35 +107,6 @@ Optional [lab key discovery](docs/configuration.md#lab-key-discovery) and
 [Prometheus metrics](docs/configuration.md#prometheus-metrics) are configured in `server.yaml`.
 
 [Configuration and troubleshooting](docs/configuration.md)
-
-## Development checks
-
-Application source and tests live in [`cmd/ssh-ballpit`](cmd/ssh-ballpit), embedded
-starter configs in [`examples`](examples), and deployment files in
-[`packaging`](packaging). Build from the repository root:
-
-```sh
-go build -o bin/ssh-ballpit ./cmd/ssh-ballpit
-go test ./...
-go vet ./...
-```
-
-See [tests and checks](docs/tests.md) for the test groups, fixtures, and CI gates.
-
-Enable the [pre-commit checks](docs/pre-commit.md) for Gitleaks, Grype, Go tests,
-and vet:
-
-```sh
-git config --local core.hooksPath .githooks
-```
-
-GitHub Actions runs the same checks on every push. After they pass, a push to
-`main` builds and publishes `dlotterman/ssh-ballpit:latest` and a commit-specific
-`sha-<commit>` tag to Docker Hub when the push changes `Containerfile`,
-`.containerignore`, `.dockerignore`, Go module files, `cmd/`, or `examples/`. Documentation and
-other files outside the image inputs run CI without publishing a new image.
-The build uses the repository's `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets.
-The container badge shows a skipped job for documentation-only pushes.
 
 ## License & Contributing
 

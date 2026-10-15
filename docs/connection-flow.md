@@ -106,7 +106,7 @@ The exact policy is implemented in [`policy`](../cmd/ssh-ballpit/policy.go).
 
 ## 5. Apply command blacklist and whitelist rules
 
-The daemon checks the [command rules](configuration.md#command-whitelist-and-blacklist)
+The daemon checks the [command rules](command-rules.md)
 loaded from the configuration directory. Regexes match the whole command;
 blacklist checks also inspect individual simple invocations inside lists and
 pipelines. A blacklist match records a rejection with source `blacklist` and
