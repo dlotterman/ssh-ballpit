@@ -19,7 +19,7 @@ denied: every configured reviewer must approve
 Connection to 192.168.50.167 closed by remote host
 ```
 
-<img src="docs/assets/monitoring.png" alt="ssh-ballpit monitoring" width="400">
+<img src="docs/assets/monitoring.png" alt="ssh-ballpit monitoring" width="800">
 
 ## Motivation
 
