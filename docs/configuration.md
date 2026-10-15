@@ -402,10 +402,22 @@ Enable the HTTP endpoint in `server.yaml`:
 metrics_listen: 127.0.0.1:2112
 ```
 
-Scrape `http://127.0.0.1:2112/metrics`. For a remote Prometheus server, bind to the
-host's trusted LAN address or `0.0.0.0:2112` instead. The endpoint is plain HTTP
-without authentication, so expose it only to your monitoring network. The existing
-`--network=host` Podman command needs no additional port mappings.
+Run the container from the directory containing `config/`:
+
+```sh
+podman run --rm --name ssh-ballpit --userns=keep-id --network=host \
+  -v "$PWD/config:/config:z" \
+  docker.io/dlotterman/ssh-ballpit:latest
+```
+
+With `--network=host`, the metrics listener uses the host's port directly;
+`-p 2112:2112` is not needed or used. Scrape
+`http://127.0.0.1:2112/metrics` from Prometheus on the same host. For a remote
+Prometheus server, set `metrics_listen` to the host's trusted LAN address and
+port (or `0.0.0.0:2112` to listen on all interfaces), then scrape that address.
+The endpoint is plain HTTP without authentication, so allow access only from
+your monitoring network. If an API provider uses `key_env`, add its `--env NAME`
+option before the image name; see [Provider YAML](#provider-yaml).
 
 Example Prometheus configuration (use this host's address):
 
