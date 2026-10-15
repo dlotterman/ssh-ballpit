@@ -37,6 +37,8 @@ The original goal was supervision by a locally hosted, open-weight model.
 Additional providers can add independent reviews when the local model misses
 something.
 
+[Motivation Blog Post](https://dlotterman.bearblog.dev/bad-ideas-turned-tool-belt-favorites-ssh-ballpit/).
+
 ```mermaid
 flowchart LR
     agent["Agent"] -->|SSH command| gateway["ssh-ballpit<br/>Authenticate and check command rules"]
