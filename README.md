@@ -19,6 +19,8 @@ denied: every configured reviewer must approve
 Connection to 192.168.50.167 closed by remote host
 ```
 
+<img src="docs/assets/monitoring.png" alt="ssh-ballpit monitoring" width="1000">
+
 ## Motivation
 
 The author's environment has four types of computers:
