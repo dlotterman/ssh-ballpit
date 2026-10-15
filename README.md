@@ -37,6 +37,8 @@ The original goal was supervision by a locally hosted, open-weight model.
 Additional providers can add independent reviews when the local model misses
 something.
 
+[Motivation Blog Post](https://dlotterman.bearblog.dev/bad-ideas-turned-tool-belt-favorites-ssh-ballpit/).
+
 ```mermaid
 flowchart LR
     agent["Agent"] -->|SSH command| gateway["ssh-ballpit<br/>Authenticate and check command rules"]
@@ -54,6 +56,10 @@ This is a personal experiment, shared for the sake of sharing. It is not ready
 for production or dependable lab use.
 
 You break it you buy it.
+
+You probably want something more like [DCG](https://github.com/Dicklesworthstone/destructive_command_guard), [AgentSSH](https://github.com/Praeviso/AgentSSH), [WardGate](https://github.com/wardgate/wardgate), [agentsh](https://www.agentsh.org/) or [nono](https://github.com/nolabs-ai/nono).
+
+Nothing about this projects absolves the need for good SysAdmin and DevSecOps hygene.
 
 ## Run
 
