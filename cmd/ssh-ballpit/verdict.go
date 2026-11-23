@@ -22,6 +22,16 @@ type Result struct {
 	Safe    bool     `json:"safe"`
 }
 
+// A valid denial takes precedence when another provider also fails.
+func hasDenyVerdict(results []Result) bool {
+	for _, result := range results {
+		if result.Verdict != nil && result.Error == "" && !result.Safe {
+			return true
+		}
+	}
+	return false
+}
+
 func parseVerdict(content string) (*Verdict, error) {
 	if strings.TrimSpace(content) == "" {
 		return nil, fmt.Errorf("empty verdict content")

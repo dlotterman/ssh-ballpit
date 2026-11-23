@@ -327,3 +327,88 @@ func TestCommandRulesCLI(t *testing.T) {
 		t.Fatalf("providers-test skipped provider: %s %v calls=%d", output, err, calls.Load())
 	}
 }
+
+func TestRepeatedRuleFlags(t *testing.T) {
+	path := yamlFixture(t, "kind: gemini\nmodel: test\nthreshold: 30\n")
+	if err := os.WriteFile(path, []byte("users: {alice: {backend_user: alice}}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	args := []string{"check", "--config", path, "--user", "alice"}
+	for _, file := range []struct{ name, pattern, flag string }{
+		{"whitelist.yaml", "hostname", ""},
+		{"blacklist.yaml", "halt", ""},
+		{"allow1", "id|halt", "--whitelist-file"},
+		{"allow2", "uptime|who", "--whitelist-file"},
+		{"deny1", "who", "--blacklist-file"},
+		{"deny2", "date", "--blacklist-file"},
+	} {
+		rules := filepath.Join(filepath.Dir(path), file.name)
+		if err := os.WriteFile(rules, []byte("patterns: ['"+file.pattern+"']\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if file.flag != "" {
+			args = append(args, file.flag, rules)
+		}
+	}
+	for _, tc := range []struct{ command, source string }{
+		{"hostname", "whitelist"},
+		{"halt", "blacklist"},
+		{"id", "whitelist"},
+		{"uptime", "whitelist"},
+		{"who", "blacklist"},
+		{"date", "blacklist"},
+		{"bash", "static_policy"},
+	} {
+		output, err := runRulesCLI(t, append(args, "--command", tc.command)...)
+		wantSafe := tc.source == "whitelist"
+		if (err == nil) != wantSafe {
+			t.Errorf("check %q returned %v, expected safe=%t", tc.command, err, wantSafe)
+		}
+		var got checkOutput
+		if err := json.Unmarshal([]byte(output), &got); err != nil {
+			t.Fatal(err)
+		}
+		if got.Source != tc.source || got.Safe != wantSafe {
+			t.Errorf("check %q returned source=%q safe=%t", tc.command, got.Source, got.Safe)
+		}
+	}
+	if err := run(append(args, "--blacklist-file", filepath.Join(filepath.Dir(path), "missing"), "--command", "id"), io.Discard); err == nil {
+		t.Fatal("ignored missing explicit rules")
+	}
+}
+
+func TestSessionReviewFailureMessages(t *testing.T) {
+	fail := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "private provider error", http.StatusServiceUnavailable)
+	}))
+	defer fail.Close()
+	deny := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		verdict := `{"offensive":false,"danger_score":98,"reasons":[],"destinations":[]}`
+		json.NewEncoder(w).Encode(map[string]any{"done": true, "message": map[string]string{"content": verdict}})
+	}))
+	defer deny.Close()
+	for _, tc := range []struct {
+		name      string
+		endpoints []string
+		message   string
+	}{
+		{"unavailable", []string{fail.URL}, "denied: review could not complete\n"},
+		{"denial", []string{deny.URL}, "denied: a reviewer denied the command\n"},
+		{"mixed", []string{fail.URL, deny.URL}, "denied: a reviewer denied the command\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			config := Config{ReviewSeconds: 5}
+			for _, endpoint := range tc.endpoints {
+				config.Providers = append(config.Providers, Provider{Kind: "ollama", Endpoint: endpoint, Model: "mock", Threshold: 30})
+			}
+			channel := &ruleTestChannel{}
+			requests := make(chan *ssh.Request, 1)
+			requests <- &ssh.Request{Type: "exec", Payload: ssh.Marshal(struct{ Command string }{"uptime"})}
+			close(requests)
+			handleSession(context.Background(), config, "alice", "local", channel, requests, nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)), newApprovalReviewer(config))
+			if channel.status != 126 || channel.stderr.String() != tc.message {
+				t.Fatalf("exit=%d stderr=%q", channel.status, channel.stderr.String())
+			}
+		})
+	}
+}

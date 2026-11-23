@@ -6,9 +6,12 @@ listen: 127.0.0.1:2222
 # accept_all_keys: true  # Lab client/backend key discovery; keep user mappings below.
 # metrics_listen: 127.0.0.1:2112  # Optional Prometheus /metrics endpoint.
 backend: 127.0.0.1:22
-backend_key: backend_key
-known_hosts: known_hosts
-authorized_keys: authorized_keys
+# Identity the gateway presents to incoming clients (generated if absent).
+gateway_host_private_key: state/host_key
+# Identity used to log in to the mapped local account. Authorize its .pub there.
+backend_login_private_key: backend_key
+backend_known_hosts: known_hosts  # Verified local sshd public host key.
+client_authorized_keys: authorized_keys  # Incoming clients' public keys.
 users:
   alice:
     backend_user: alice

@@ -1,0 +1,146 @@
+# Extended Linux diagnostics. Load explicitly with --whitelist-file after review.
+# The gateway matches one entire simple command, including option order.
+# Unit status, unit definitions, journals and process listings can reveal arguments
+# or service settings. All mapped users can use the rules you activate.
+patterns:
+  # Host, load, memory and filesystem overview. df has no -c option; du does.
+  - 'uname -a'
+  - '(?:uptime|w|who|id|hostnamectl|timedatectl)'
+  - 'free -h'
+  - 'df -(?:hT|ih)'
+  - 'df -h /'
+  - 'ls -al /home/[A-Za-z0-9_][A-Za-z0-9_.-]*'
+  - 'du -cs -- /(?:var/log|var/tmp|tmp|home)'
+  - 'lsblk -f'
+  - 'findmnt(?: -T /(?:var|home|tmp))?'
+
+  # Processes and sockets. -p may omit process details owned by other users.
+  - 'ps (?:-axuf|-ef|aux)'
+  - 'ss -(?:tnap|tlnp|ulnp|s)'
+  - 'ip (?:-br addr show|-br link show|route show|-s link show|netns list)'
+
+  # Named network namespaces only. Switching namespaces may require privileges.
+  # ss -N inspects the named namespace without executing another program.
+  - 'ss -N [A-Za-z0-9][A-Za-z0-9_.-]{0,63} -(?:tlnp|tnap|ulnp)'
+  - 'ip -n [A-Za-z0-9][A-Za-z0-9_.-]{0,63} (?:-br addr show|-br link show|route show|-s link show)'
+
+  # Unit state and bounded journal excerpts. Use --no-pager for SSH exec.
+  - 'systemctl (?:--user )?--no-pager --plain (?:status|is-active|is-enabled) [A-Za-z0-9][A-Za-z0-9_.@-]{0,127}'
+  - 'systemctl (?:--user )?--no-pager --plain (?:list-units --type=service --all|list-timers --all)'
+  - 'journalctl (?:--user )?--no-pager -n (?:50|100|200) -u [A-Za-z0-9][A-Za-z0-9_.@-]{0,127}'
+  - 'systemd-analyze (?:--user )?(?:time|blame|critical-chain)'
+  - 'systemd-analyze --user verify'
+
+  # Manager state and unit discovery.
+  - 'systemctl --system --no-pager --plain is-system-running'
+  - 'systemctl --system --no-pager --plain list-jobs'
+  - 'systemctl --system --no-pager --plain list-units(?: --all)?(?: --type=(?:service|target|mount|path|socket|timer))?'
+  - 'systemctl --system --no-pager --plain list-units --failed'
+  - 'systemctl --system --no-pager --plain list-unit-files(?: --type=(?:service|target|mount|path|socket|timer))?'
+
+  # Inspect a single system unit without modifying it.
+  - 'systemctl --system --no-pager --plain (?:status|cat|is-active|is-enabled|is-failed) [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl --system --no-pager --plain list-dependencies(?: --all)? [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl --system --no-pager --plain show --property=LoadState,ActiveState,SubState,Result,ExecMainStatus,FragmentPath,DropInPaths [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+
+  # Recent system journal entries from this or the previous boot.
+  - 'journalctl --system --no-pager --output=short-iso --list-boots'
+  - 'journalctl --system --no-pager --output=short-iso -b(?: -1)? -n (?:100|200|500)'
+  - 'journalctl --system --no-pager --output=short-iso -b(?: -1)? -p (?:err|warning) -n (?:100|200|500)'
+  - 'journalctl --system --no-pager --output=short-iso -b(?: -1)? -u [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254} -n (?:100|200|500)'
+
+  # Boot timing, dependency chains, and validation of installed system units.
+  - 'systemd-analyze --system --no-pager (?:time|blame|unit-paths)'
+  - 'systemd-analyze --system --no-pager critical-chain(?: [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254})?'
+  - 'systemd-analyze --system --no-pager verify /etc/systemd/system/[A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+
+  # Service dependencies, storage, USB and previous-boot checks from host triage.
+  - 'date -Is'
+  # Show failed units for the system or the connected user's manager.
+  - 'systemctl --failed --no-legend'
+  - 'systemctl --user --failed --no-legend'
+  - 'systemctl --no-pager --plain list-units --type=(?:path|service) --all'
+  - 'systemctl --user --no-pager --plain list-units --type=(?:path|service) --all'
+  - 'systemctl --no-pager --plain list-jobs'
+  - 'systemctl --user --no-pager --plain list-jobs'
+  - 'systemctl list-dependencies --reverse --all [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl show --property=Id,LoadState,UnitFileState,RequiredBy,WantedBy,TriggeredBy,Triggers,Requires,Wants,After,Before [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl show --property=Id,Requires,Wants,After,Before,UnitFileState [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl show --property=Id,LoadState,UnitFileState,ActiveState,SubState,Result,ExecMainCode,ExecMainStatus,ExecMainStartTimestamp,ExecMainExitTimestamp,ConditionResult,Conditions,After,Before,Wants,Requires,BindsTo,PartOf,TriggeredBy,Triggers,RequiresMountsFor [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl show --property=Id,LoadState,UnitFileState,ActiveState,SubState,Result,ExecMainCode,ExecMainStatus,ExecMainStartTimestamp,ExecMainExitTimestamp,ConditionResult,After,Before,Wants,Requires,BindsTo,PartOf,TriggeredBy,Triggers,RequiresMountsFor [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl show --property=Id,UnitFileState,WantedBy,RequiredBy,ConditionPathExists,ConditionPathIsMountPoint,After,Requires,BindsTo [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl show --property=Id,LoadState,UnitFileState,ActiveState,SubState,Type,Restart,TimeoutStartUSec,Nice,CPUWeight,IOWeight,After,Requires,BindsTo,ConditionPathExists [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl is-enabled [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}(?: [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254})*'
+
+  # Read unit state only. Unit arguments are restricted to systemd name chars;
+  # extra options and shell syntax do not match.
+  - 'systemctl is-active [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl --user is-active [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl status --no-pager -l [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl --user status --no-pager -l [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl --user status [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254} [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254} [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254} --no-pager -l'
+
+  # Query only non-secret unit state and dependency metadata.
+  - 'systemctl show --property=Id,ActiveState,SubState,Result,After,Wants,Requires [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl --user show --property=Id,ActiveState,SubState,Result,After,Wants,Requires [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl show --property=Id,LoadState,ActiveState,SubState,Result,After,Before,Wants,Requires,BindsTo,PartOf,TriggeredBy,Triggers,RequiresMountsFor,ConditionPathExists,ExecMainStartTimestamp,ExecMainExitTimestamp [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl show --property=Id,LoadState,ActiveState,SubState,Result,After,Before,Wants,Requires,BindsTo,PartOf,TriggeredBy,Triggers,RequiresMountsFor,ConditionPathExists,ConditionPathIsMountPoint [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl show --property=Id,ActiveState,SubState,Result,ConditionResult,Conditions,ExecMainStartTimestamp,ExecMainExitTimestamp,Type,RemainAfterExit [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl show --property=Id,ActiveState,SubState,Result,After,Before,Requires,Wants,Triggers,TriggeredBy,RequiresMountsFor,PathExists,PathExistsGlob,PathChanged,PathModified,DirectoryNotEmpty,Unit [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl show --property=Paths [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl --user show --property=Paths [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl --user show --property=Paths,UnitFileState,ActiveState,SubState,Result,Restart,RestartUSec,StartLimitBurst,StartLimitIntervalUSec [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl --user show --property=Id,LoadState,ActiveState,SubState,FragmentPath,WantedBy,RequiredBy,After,Requires,Wants,PartOf,TriggeredBy,ConditionResult,Conditions [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl --user show --property=Id,LoadState,UnitFileState,ActiveState,SubState,Result,Triggers,TriggeredBy,WantedBy,Wants,Requires,BindsTo,PartOf,After,Before [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+  - 'systemctl --user list-unit-files --no-legend'
+  - 'systemctl --user show --property=Id,NeedDaemonReload,ActiveState,SubState,Result [A-Za-z0-9][A-Za-z0-9_.@:-]{0,254}'
+
+  # Identify attached disks, mount state, USB link speeds, and failed units.
+  - 'lsblk -o NAME,TRAN,SIZE,MODEL,SERIAL,STATE,HCTL,MOUNTPOINTS'
+  - 'findmnt -rn -o SOURCE,TARGET,FSTYPE'
+  - 'lsusb -t'
+  - 'lsusb'
+  - 'ls /sys/kernel/tracing/events/xhci-hcd'
+  - 'ls /sys/kernel/debug/usb/usbmon'
+  - 'smartctl -d sat -n standby,3 -i /dev/sd[a-z]'
+  - 'smartctl -d sat -n standby,3 -i -g all (?:/dev/sd[a-z]|/dev/disk/by-uuid/[0-9a-f-]+)'
+  - 'cat /sys/module/usbcore/parameters/autosuspend'
+  - 'cat /proc/sys/kernel/printk'
+  - 'cat /proc/cmdline'
+  - 'cat /sys/bus/usb/devices/[0-9]+-0:1[.]0/usb[0-9]+-port[0-9]+/(?:over_current_count|connect_type|state)'
+  - 'cat /sys/bus/pci/devices/[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}[.][0-7]/power/(?:control|runtime_status)'
+  - 'cat /sys/kernel/security/lockdown'
+  - 'cat /sys/bus/usb/devices/[0-9]+-[0-9.]+/power/(?:control|autosuspend_delay_ms|runtime_status)'
+  - 'cat /sys/fs/xfs/dm-[0-9]+/error/fail_at_unmount'
+  - 'cat /sys/fs/xfs/dm-[0-9]+/error/metadata/EIO/(?:max_retries|retry_timeout_seconds)'
+  - 'cat /sys/block/dm-[0-9]+/dm/name'
+  - 'ls -1 /sys/block/dm-[0-9]+/slaves'
+  - 'ls -l /sys/block/dm-[0-9]+/slaves'
+  - 'cat /sys/bus/usb/devices/[0-9]+-[0-9.]+/product'
+  - 'journalctl -k -b --since "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}" --until "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}" --no-pager -o short-iso'
+  - 'journalctl -k -b --no-pager -o short-iso -n (50|100)'
+  # Narrow previous-boot crash triage; kernel entries and boot boundaries only.
+  - 'journalctl --list-boots --no-pager'
+  - 'journalctl -k -b -[1-3] --since "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}" --until "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}" --no-pager -o short-iso'
+  - 'ls -l /var/crash'
+  - 'cat /sys/class/watchdog/watchdog[0-9]+/bootstatus'
+
+  # Removable-media and GPU checks used during desktop diagnostics.
+  - 'lsblk -o NAME,PATH,TRAN,RM,HOTPLUG,SIZE,TYPE,FSTYPE,MOUNTPOINTS,MODEL'
+  - 'lsblk -o NAME,PATH,TRAN,RM,RO,SIZE,TYPE,FSTYPE,MOUNTPOINTS,MODEL'
+  - 'cat /sys/class/drm/card[0-9]+/device/(?:gpu_busy_percent|mem_info_vram_used|mem_info_vram_total)'
+  - 'sysctl net[.]ipv4[.]ip_forward'
+
+  # Rootless container inventory. Uses the mapped account's Podman storage.
+  - 'podman ps'
+  - 'podman version'
+
+  # Site-specific templates. Set literal paths and unit/container names locally,
+  # then uncomment individual entries. These examples constrain output and inputs.
+  # - 'rclone listremotes --config /run/example/rclone[.]conf'
+  # - 'journalctl --user --no-pager -n 50 -u example[.]path -u example[.]service -o short-iso'
+  # - 'stat -c %s /run/example/rclone[.]conf'
+  # - 'systemd-analyze condition ConditionPathExists=/run/example/open[.]ready ConditionPathIsEncrypted=/mnt/example/'
+  # - 'podman ps --filter name=example-web --format "\{\{\.Names\}\} \{\{\.Status\}\} \{\{\.Ports\}\}"'
+  # - 'tcpdump -nn -tttt -vv -r /var/tmp/usbmon3[.]pcap[0-3]'
+  # - 'stat -c "%n: %F" /mnt/example/service/conf /mnt/example/certs/README /mnt/example-share/[.]ready'

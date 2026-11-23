@@ -41,6 +41,7 @@ flowchart TD
     approve --> backend
     backend -->|Failure| failure["Report backend failure with exit 255"]
     backend -->|Success| run["Execute exact command; relay stdout and stderr"]
+    run -.->|Eligible reviewed command, collection enabled| suggested["Save exact suggested rule"]
     run --> finish["Return command exit status and close connection"]
 ```
 
@@ -51,9 +52,9 @@ runs through its own handler.
 ## 1. Load configuration and start listening
 
 At startup the daemon reads server and provider configuration, validates and
-compiles optional `whitelist.yaml` and `blacklist.yaml` command rules, loads client key
-rules, loads or creates its own SSH host key, and loads the backend private key
-and host-key trust file. The backend must be a literal loopback address, such as
+compiles the default and explicitly named command-rule files, loads client key
+rules, and loads the backend private key and host-key trust file. It loads or
+creates its own SSH identity at `gateway_host_private_key`. The backend must be a literal loopback address, such as
 `127.0.0.1:22`. It logs configuration without credentials, starts the SSH listener,
 and starts the optional Prometheus listener.
 
@@ -70,7 +71,7 @@ gets a slot and has 10 seconds to complete the SSH handshake.
 The client authenticates to **ssh-ballpit**, using its public key. In normal mode:
 
 - The frontend username must exist in `users` and have a `backend_user` mapping.
-- The key must appear in the configured `authorized_keys` file.
+- The key must appear in the file selected by `client_authorized_keys`.
 - Its fingerprint must also appear in that user's `fingerprints` list.
 - The client must prove possession of the corresponding private key.
 
@@ -89,7 +90,7 @@ forwarding channels and requests such as PTY allocation, interactive shell,
 subsystem, and environment requests. This also excludes SFTP and ProxyJump use.
 
 The daemon decodes the command and calculates its SHA256 hash for logs. If
-`log_commands: true`, it also logs the plaintext command. Accepting the SSH `exec`
+`log_commands: true`, receipt, decision and backend result events include the plaintext command. Accepting the SSH `exec`
 request acknowledges receipt; it does not mean the command passed review.
 
 ## 4. Apply the static policy
@@ -161,8 +162,11 @@ errors and malformed verdicts are not automatically retried.
 
 Every configured provider must approve. A timeout, transport error, invalid
 response, offensive verdict, or score at/above threshold denies the command.
-The client receives `denied: every configured reviewer must approve` and exit
-status **126**; per-provider details are available in the daemon logs.
+SSH returns exit status **126** in both cases. A valid denying verdict produces
+`denied: a reviewer denied the command`, including when another reviewer failed.
+If review failed without a denying verdict, SSH reports `denied: review could
+not complete`. The operator can run `providers-check` and inspect the daemon's
+per-provider review events.
 
 The completed decision enters history before backend execution. Valid safety
 rejections use source `reviewers`; a denial caused only by review failures uses
@@ -173,9 +177,9 @@ until they finish.
 ## 8. Open a separate connection to local sshd
 
 Only after approval does ssh-ballpit connect to `backend`. It checks the server's
-host key against `known_hosts` and authenticates as `backend_user` using
-`backend_key`. The client's private key is never forwarded. The backend account
-must already authorize the daemon's backend key.
+host key against entries in `backend_known_hosts` and authenticates as `backend_user` using
+`backend_login_private_key`. The client's private key is never forwarded. The backend account
+must already authorize the public half of that login key.
 
 With `accept_all_keys: true`, unknown, changed, or revoked backend host keys are
 accepted and logged at ERROR level with their fingerprint and a `known_hosts_entry`.
@@ -188,6 +192,10 @@ The daemon sends the exact approved command in a backend SSH exec request.
 Backend stdin is EOF: client input is not forwarded as an unchecked program.
 Stdout and stderr are relayed to the original client. Output is not reviewed by
 the LLMs, and execution is not continuously supervised by them.
+
+When `--suggest-whitelist DIR` is enabled, eligible model-approved commands
+that returned a backend exit status are saved as exact suggested rules.
+The operator can review and explicitly load them on a later start.
 
 Normal completion returns the backend command's exit status. Backend connection,
 authentication, or session failures return **255** with a generic client error

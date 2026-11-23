@@ -13,6 +13,11 @@ for tool in gitleaks grype "$GO"; do
     fi
 done
 
+# Grype uses go from PATH to discover the transitive module graph.
+go_bin=$(command -v "$GO")
+PATH=$(cd "$(dirname "$go_bin")" && pwd):$PATH
+export PATH
+
 cd "$(git rev-parse --show-toplevel)"
 # Scan only the proposed commit.
 gitleaks git --pre-commit --staged --redact --no-banner

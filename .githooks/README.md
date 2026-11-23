@@ -9,6 +9,7 @@ The hook runs these checks in order and blocks the commit if any fails:
 
 The Gitleaks and Grype checks follow the staged-diff and staged-snapshot pattern.
 Ignored credentials and build artifacts are excluded from the staged snapshot.
+The hook puts the configured Go toolchain on PATH so Grype can inventory transitive modules.
 The directory scan covers the source dependencies; it does not scan the built
 container's OS packages or installed Codex CLI.
 

@@ -144,6 +144,10 @@ func testSSHRelay(t *testing.T, lab, logCommands bool) {
 	c := Config{Listen: addr, HostKey: filepath.Join(dir, "front"), AuthorizedKeys: filepath.Join(dir, "authorized"), Backend: listener.Addr().String(), BackendKey: filepath.Join(dir, "backend"), KnownHosts: filepath.Join(dir, "known"), Users: map[string]User{"alice": {BackendUser: "local-alice", Fingerprints: []string{ssh.FingerprintSHA256(clientKey.PublicKey())}}}, Providers: []Provider{{Name: "mock", Kind: "ollama", Endpoint: provider.URL, Model: "mock", Threshold: 30}}, MaxConnections: 8, SessionSeconds: 5, ReviewSeconds: 2}
 	c.AcceptAllKeys = lab
 	c.LogCommands = logCommands
+	c.suggestions, e = newSuggestions(dir)
+	if e != nil {
+		t.Fatal(e)
+	}
 	if lab {
 		c.Users["alice"] = User{BackendUser: "local-alice"}
 	}
@@ -350,6 +354,10 @@ func testSSHRelay(t *testing.T, lab, logCommands bool) {
 	if !strings.Contains(metricsText, expectedLab) {
 		t.Fatal("incorrect lab mode metric")
 	}
+	patterns, err := readCommandPatterns(c.suggestions.path)
+	if err != nil || len(patterns) != 1 || !matchesCommand(patterns, "uname -a") {
+		t.Fatal("expected only executed, approved command in suggestions", err)
+	}
 	loggedCommands := map[string]int{}
 	for _, line := range strings.Split(logs.String(), "\n") {
 		if line == "" {
@@ -358,6 +366,11 @@ func testSSHRelay(t *testing.T, lab, logCommands bool) {
 		var event map[string]any
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			t.Fatal("command text broke JSON log framing", err)
+		}
+		if _, hasHash := event["command_sha256"]; hasHash {
+			if _, hasText := event["command"]; hasText != logCommands {
+				t.Fatalf("unexpected plaintext setting for %v", event["msg"])
+			}
 		}
 		if event["msg"] == "ssh command received" {
 			command, ok := event["command"].(string)

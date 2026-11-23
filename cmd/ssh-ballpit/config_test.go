@@ -111,3 +111,26 @@ func TestLabAndMetricsYAML(t *testing.T) {
 		t.Fatal("lab and metrics settings not loaded", err)
 	}
 }
+
+func TestSSHKeyRoleNames(t *testing.T) {
+	path := yamlFixture(t, "kind: gemini\nmodel: test\nthreshold: 30\n")
+	settings := "gateway_host_private_key: gateway\nclient_authorized_keys: clients\nbackend_login_private_key: login\nbackend_known_hosts: hosts\n"
+	if err := os.WriteFile(path, []byte(settings), 0600); err != nil {
+		t.Fatal(err)
+	}
+	c, err := readConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for got, want := range map[string]string{c.HostKey: "gateway", c.AuthorizedKeys: "clients", c.BackendKey: "login", c.KnownHosts: "hosts"} {
+		if got != filepath.Join(filepath.Dir(path), want) {
+			t.Errorf("unexpected %s path %q", want, got)
+		}
+	}
+	if err := os.WriteFile(path, []byte(settings+"backend_key: other\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readConfig(path); err == nil {
+		t.Fatal("ambiguous backend identity accepted")
+	}
+}

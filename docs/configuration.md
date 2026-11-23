@@ -43,24 +43,34 @@ Optional fields and defaults:
 | `verbose_review_logs` | `false` |
 | `metrics_listen` | empty (disabled) |
 | `backend` | `127.0.0.1:22` |
-| `authorized_keys` | `authorized_keys` |
-| `backend_key` | `backend_key` |
-| `known_hosts` | `known_hosts` |
-| `host_key` | `state/host_key` (generated if absent) |
 | `providers_dir` | `providers` |
 | `review_seconds` | `30` |
 | `session_seconds` | `300` |
 | `max_connections` | `32` |
 | `approval_cache_entries` | `10000` (`-1` disables; `0` uses default) |
 
+### SSH key paths
+
+The default paths in this table are relative to `server.yaml`. To migrate an existing YAML
+config, change the field name and keep its path. Use one spelling per role.
+Legacy JSON uses the older field names. The daemon also uses those names for
+the SSH paths in its startup log.
+
+| YAML setting | Default path | Older field name | Purpose |
+| --- | --- | --- | --- |
+| `gateway_host_private_key` | `state/host_key` | `host_key` | The gateway proves its identity to incoming clients. Generated if absent. |
+| `client_authorized_keys` | `authorized_keys` | `authorized_keys` | The gateway checks incoming client public keys against this file. |
+| `backend_login_private_key` | `backend_key` | `backend_key` | The gateway logs in to the local sshd. Authorize its public half for the mapped backend account. |
+| `backend_known_hosts` | `known_hosts` | `known_hosts` | The gateway verifies the local sshd's host key against entries in this file. |
+
 `users` maps frontend names to `backend_user` and a list of allowed client key
 `fingerprints`. Use `ssh-keygen -lf client.pub -E sha256` to get fingerprints. A
-client key must match both the custom authorized_keys file and that user's
+client key must match both the file selected by `client_authorized_keys` and that user's
 fingerprint list. Only bare public keys are supported; authorized_keys options
-are rejected. Backend private keys must be unencrypted and already authorized
-by existing sshd. Backend authentication is separate from client authentication.
-Verify the backend host-key fingerprint independently before adding known_hosts;
-nonstandard ports use `[127.0.0.1]:PORT` entries. The backend must be a literal
+are rejected. The backend login private key must be unencrypted.
+Independently verify the backend host-key fingerprint before saving the public
+host key in the file selected by `backend_known_hosts`.
+Nonstandard ports use `[127.0.0.1]:PORT` entries. The backend must be a literal
 loopback address. Host networking lets the container reach the host's loopback;
 there is no `-p` mapping. With Podman Machine, loopback refers to the VM.
 
@@ -140,10 +150,20 @@ Live subscription inference requires completing device authorization first.
 Append a subcommand to the same Podman run command used in the README:
 
 ```text
+providers-check
 providers-test
 check --user alice --command 'uname -a'
 serve --authorized-keys /config/other_authorized_keys
 ```
+
+The `--authorized-keys` flag overrides `client_authorized_keys` for this invocation.
+
+`providers-check` sends a harmless review request to every configured provider
+and prints one JSON status per provider. It succeeds only when each provider is
+reachable, accepts its configured credentials, and returns a valid verdict; a
+valid safety denial still counts as a successful check. It bypasses command
+rules and never runs the diagnostic command on sshd. Use it to distinguish
+provider access problems from backend SSH authentication failures.
 
 `providers-test` and `check` never execute submitted commands. To run detached,
 add `-d`; use `podman logs ssh-ballpit` and `podman stop ssh-ballpit` afterward.
@@ -217,15 +237,15 @@ actual authentication. The normal initial `none` method-discovery probe is omitt
 | --- | --- |
 | `unknown_user` | Frontend username must exist in `server.yaml` → `users`. |
 | `missing_backend_user` | The user's `backend_user` must be set. |
-| `key_not_in_authorized_keys` | Add the intended client public key to the configured authorized_keys file. |
+| `key_not_in_authorized_keys` | Add the intended client public key to the file selected by `client_authorized_keys`. |
 | `key_not_allowed_for_user` | Add that key's fingerprint to the intended user's mapping. |
 | `unsupported_authentication_method` | Use public-key authentication; passwords are not supported. |
 | `connection_limit_reached` | Existing connections have filled `max_connections`. |
 | `timeout` / `peer_disconnected` | The peer stalled or closed the connection during the handshake. |
 | `no_common_ssh_algorithm` | Client and server could not negotiate compatible SSH algorithms. |
 | `connection_refused` | Check `backend` and whether local sshd is listening. |
-| `host_key_unknown` / `host_key_mismatch` | Verify sshd's host key and the configured known_hosts entry. |
-| `backend_authentication_rejected` | Check the backend username and whether sshd accepts the backend key. |
+| `host_key_unknown` / `host_key_mismatch` | Verify sshd's host key and its entry in `backend_known_hosts`. |
+| `backend_authentication_rejected` | Check `backend_user` and whether sshd authorizes the public half of `backend_login_private_key` for that account. |
 
 Some reasons include explanatory text after the code. Failed handshakes also
 include local/remote addresses and the error type. Backend failures identify the
@@ -262,8 +282,8 @@ cached. Concurrent first requests can each call the reviewers; once an approval
 is stored, later exact repeats use it. `check` applies local command policy, then
 performs fresh model reviews when needed; `providers-test` always calls models.
 Neither CLI command uses the daemon cache. JSON logs include `msg: "approval cache"`, `hit`, `safe`, and the
-command hash, without command text. With `log_commands: true`, a separate
-`ssh command received` event records the command even on cache hits.
+command hash. With `log_commands: true`, both `approval cache` and
+`ssh command received` include the command text, including on cache hits.
 
 The cache reuses a review decision, not a guarantee that files, URL destinations
 or other external state are unchanged. Restart the daemon to clear approvals
@@ -285,8 +305,8 @@ This accepts any client public key **for configured users with a backend mapping
 Clients must still prove possession of the private key. Unknown users and users
 without a backend mapping are rejected. This also accepts destination SSH host
 keys that fail trust checks, including unknown, changed, or revoked keys. Command
-review and backend user authentication remain required. Missing or empty
-`authorized_keys` and `known_hosts` files are allowed in this mode; malformed or
+review and backend user authentication remain required. This mode allows the files selected by
+`client_authorized_keys` and `backend_known_hosts` to be missing or empty; malformed or
 unreadable files and unsupported authorized_keys options still fail startup.
 
 Startup emits `ACCEPT ALL SSH KEYS ENABLED` at ERROR level. Each successful login
@@ -326,12 +346,12 @@ podman logs ssh-ballpit 2>&1 | jq -r '
 ```
 
 After you trust the destination fingerprint, copy its `known_hosts_entry` into
-the configured `known_hosts` file, replacing any stale entry for that destination.
+the file selected by `backend_known_hosts`, replacing any stale entry for that destination.
 The logged line includes the port when needed. Review any existing revocation
 before removing it.
 
 After you trust the collected client identities, put their fingerprints under that
-user's `fingerprints` list, and their public-key lines in `authorized_keys`.
+user's `fingerprints` list, and their public-key lines in the file selected by `client_authorized_keys`.
 Set `accept_all_keys: false` and restart to enforce them. No keys are automatically
 added to configuration. Logged public keys are public material; private keys and
 provider credentials are never included.
@@ -341,7 +361,7 @@ provider credentials are never included.
 On the host running ssh-ballpit, run these commands from the
 repository directory. Set the address and port to match `backend` in
 `config/server.yaml`, and the file path to the host-side bind mount for
-`known_hosts`. The defaults below match `127.0.0.1:22` and `config/known_hosts`.
+`backend_known_hosts`. The defaults below match `127.0.0.1:22` and `config/known_hosts`.
 These commands require OpenSSH client tools.
 
 Discover the keys directly from sshd and display their fingerprints:
@@ -470,7 +490,14 @@ Each authenticated, well-formed SSH exec request emits one INFO event with
 frontend/backend usernames, client address and key fingerprint. It is logged
 before policy checks and LLM review, so this covers rejected commands, approved
 commands, cache hits and commands whose backend execution fails. This event
-records receipt, not approval or execution success.
+records receipt. With this option, command policy, cache, reviewer and backend
+events also carry the same `command` field. A completed backend command logs
+`backend command finished` with its exit status. To read just the command text
+from a stream of daemon JSON logs, pipe it through:
+
+```sh
+jq -r 'select(.msg == "ssh command received") | .command'
+```
 
 JSON escaping keeps quotes, tabs and newlines inside one log record. Command
 text is not redacted: passwords or tokens included in the command will also be
@@ -601,7 +628,7 @@ standalone processes and send empty history lists.
 History holds command text only in daemon memory and clears on restart. It is
 never shared between user pairs. Past command text—including policy-rejected
 commands—is sent to the configured providers on later reviews. History is not added to metrics. `verbose_review_logs` includes history in
-Ollama replay commands; `log_commands` records incoming commands separately.
+Ollama replay commands. `log_commands` includes command text on daemon decisions and backend results.
 Oversized rejected commands are limited to 16,384 bytes in history and marked
 `truncated: true` to bound memory and prompt size. Normal commands are preserved.
 

@@ -80,16 +80,9 @@ func (r *approvalReviewer) check(ctx context.Context, user, backendUser, command
 		}
 		r.mu.Unlock()
 	}
-	source := "review_error"
-	if safe {
-		source = "reviewers"
-	} else {
-		for _, result := range results {
-			if result.Verdict != nil && !result.Safe && result.Error == "" {
-				source = "reviewers"
-				break
-			}
-		}
+	source := "reviewers"
+	if !safe && !hasDenyVerdict(results) {
+		source = "review_error"
 	}
 	r.remember(user, backendUser, command, safe, source)
 	return results, safe, false

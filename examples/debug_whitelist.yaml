@@ -1,0 +1,29 @@
+# Optional diagnostics for an unprivileged account. Copy selected patterns into
+# config/whitelist.yaml; this file is not loaded automatically. Each pattern
+# matches the entire command, and the static policy and blacklist still apply.
+# Keep flags and argument positions fixed: a whitelist match skips model review.
+patterns:
+  # Host, load, memory and filesystem overview. df has no -c option; du does.
+  - 'uname -a'
+  - '(?:uptime|w|who|id|hostnamectl|timedatectl)'
+  - 'free -h'
+  - 'df -(?:hT|ih)'
+  - 'du -cs -- /(?:var/log|var/tmp|tmp|home)'
+  - 'lsblk -f'
+  - 'findmnt(?: -T /(?:var|home|tmp))?'
+
+  # Processes and sockets. -p may omit process details owned by other users.
+  - 'ps (?:-axuf|-ef|aux)'
+  - 'ss -(?:tnap|tlnp|ulnp|s)'
+  - 'ip (?:-br addr show|-br link show|route show|-s link show|netns list)'
+
+  # Named network namespaces only. Switching namespaces may require privileges.
+  # ss -N inspects the named namespace without executing another program.
+  - 'ss -N [A-Za-z0-9][A-Za-z0-9_.-]{0,63} -(?:tlnp|tnap|ulnp)'
+  - 'ip -n [A-Za-z0-9][A-Za-z0-9_.-]{0,63} (?:-br addr show|-br link show|route show|-s link show)'
+
+  # Unit state and bounded journal excerpts. Use --no-pager for SSH exec.
+  - 'systemctl (?:--user )?--no-pager --plain (?:status|is-active|is-enabled) [A-Za-z0-9][A-Za-z0-9_.@-]{0,127}'
+  - 'systemctl (?:--user )?--no-pager --plain (?:list-units --type=service --all|list-timers --all)'
+  - 'journalctl (?:--user )?--no-pager -n (?:50|100|200) -u [A-Za-z0-9][A-Za-z0-9_.@-]{0,127}'
+  - 'systemd-analyze (?:--user )?(?:time|blame|critical-chain)'
