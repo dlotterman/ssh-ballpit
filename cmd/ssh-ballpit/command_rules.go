@@ -31,25 +31,51 @@ func localCommandDecision(config Config, command string) (string, bool, error) {
 }
 
 func readCommandRules(dir string) (commandRules, error) {
-	whitelist, err := readCommandPatterns(filepath.Join(dir, "whitelist.yaml"))
+	whitelist, err := readOptionalPatterns(filepath.Join(dir, "whitelist.yaml"))
 	if err != nil {
 		return commandRules{}, err
 	}
-	blacklist, err := readCommandPatterns(filepath.Join(dir, "blacklist.yaml"))
+	blacklist, err := readOptionalPatterns(filepath.Join(dir, "blacklist.yaml"))
 	if err != nil {
 		return commandRules{}, err
 	}
 	return commandRules{whitelist: whitelist, blacklist: blacklist}, nil
 }
 
-func readCommandPatterns(path string) ([]*regexp.Regexp, error) {
-	_, err := os.Lstat(path)
-	if os.IsNotExist(err) {
-		return nil, nil // Optional files preserve existing deployments.
-	}
+func (r *commandRules) addFiles(whitelistFiles, blacklistFiles []string) error {
+	whitelist, err := readPatternFiles(whitelistFiles)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	blacklist, err := readPatternFiles(blacklistFiles)
+	if err != nil {
+		return err
+	}
+	r.whitelist = append(r.whitelist, whitelist...)
+	r.blacklist = append(r.blacklist, blacklist...)
+	return nil
+}
+
+func readPatternFiles(paths []string) ([]*regexp.Regexp, error) {
+	var patterns []*regexp.Regexp
+	for _, path := range paths {
+		filePatterns, err := readCommandPatterns(path)
+		if err != nil {
+			return nil, err
+		}
+		patterns = append(patterns, filePatterns...)
+	}
+	return patterns, nil
+}
+
+func readOptionalPatterns(path string) ([]*regexp.Regexp, error) {
+	if _, err := os.Lstat(path); os.IsNotExist(err) {
+		return nil, nil
+	}
+	return readCommandPatterns(path)
+}
+
+func readCommandPatterns(path string) ([]*regexp.Regexp, error) {
 	// A dangling symlink is a broken configured list, not an absent list.
 	data, err := os.ReadFile(path)
 	if err != nil {

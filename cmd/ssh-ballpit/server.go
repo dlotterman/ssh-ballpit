@@ -173,13 +173,15 @@ func handleSession(ctx context.Context, config Config, user, backendUser string,
 			}
 		}()
 		hash := fmt.Sprintf("%x", sha256.Sum256([]byte(payload.Command)))
+		logger = logger.With("backend_user", backendUser, "command_sha256", hash)
 		if config.LogCommands {
-			logger.Info("ssh command received", "backend_user", backendUser, "command_sha256", hash, "command", payload.Command)
+			logger = logger.With("command", payload.Command)
+			logger.Info("ssh command received")
 		}
 		source, safe, decisionErr := localCommandDecision(config, payload.Command)
 		if source != "" {
 			reviewer.remember(user, backendUser, payload.Command, safe, source)
-			logger.Info("command policy", "command_sha256", hash, "source", source, "safe", safe)
+			logger.Info("command policy", "source", source, "safe", safe)
 		}
 		if decisionErr != nil {
 			if config.metrics != nil {
@@ -190,25 +192,29 @@ func handleSession(ctx context.Context, config Config, user, backendUser string,
 				config.metrics.commands.WithLabelValues(outcome).Inc()
 			}
 			fmt.Fprintln(ch.Stderr(), "denied:", decisionErr)
-			logger.Info("denied", "command_sha256", hash, "reason", source)
+			logger.Info("denied", "reason", source)
 			finish(ch, 126)
 			return
 		}
+		var results []Result
 		if source == "" {
-			var results []Result
 			var hit bool
 			results, safe, hit = reviewer.check(ctx, user, backendUser, payload.Command)
-			logger.Info("approval cache", "command_sha256", hash, "hit", hit, "safe", safe)
+			logger.Info("approval cache", "hit", hit, "safe", safe)
 			// Model reasons and provider response bodies stay out of logs.
 			for _, r := range results {
-				logger.Info("review", "command_sha256", hash, "reviewer", r.Name, "safe", r.Safe, "error", r.Error)
+				logger.Info("review", "reviewer", r.Name, "safe", r.Safe, "error", r.Error)
 			}
 		}
 		if !safe {
 			if config.metrics != nil {
 				config.metrics.commands.WithLabelValues("review_denied").Inc()
 			}
-			fmt.Fprintln(ch.Stderr(), "denied: every configured reviewer must approve")
+			if hasDenyVerdict(results) {
+				fmt.Fprintln(ch.Stderr(), "denied: a reviewer denied the command")
+			} else {
+				fmt.Fprintln(ch.Stderr(), "denied: review could not complete")
+			}
 			finish(ch, 126)
 			return
 		}
@@ -226,7 +232,16 @@ func handleSession(ctx context.Context, config Config, user, backendUser string,
 		}
 		if err != nil {
 			fmt.Fprintln(ch.Stderr(), "execution failed: backend unavailable or session interrupted")
-			logger.Warn("backend failed", "backend", config.Backend, "backend_user", backendUser, "command_sha256", hash, "reason", connectionReason(err), "error", err.Error())
+			logger.Warn("backend failed", "backend", config.Backend, "reason", connectionReason(err), "error", err.Error())
+		} else {
+			if config.LogCommands {
+				logger.Info("backend command finished", "exit_status", code)
+			}
+			if config.suggestions != nil && source == "" {
+				if err := config.suggestions.record(payload.Command); err != nil {
+					logger.Warn("saving whitelist suggestion failed", "error", err)
+				}
+			}
 		}
 		finish(ch, code)
 		return

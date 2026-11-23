@@ -65,6 +65,7 @@ type Config struct {
 	// Runtime state is initialized after decoding, never read from config files.
 	metrics      *daemonMetrics
 	commandRules commandRules
+	suggestions  *suggestions
 }
 
 func readConfig(path string) (Config, error) {
@@ -85,9 +86,9 @@ func readConfig(path string) (Config, error) {
 			return config, fmt.Errorf("trailing configuration data")
 		}
 	} else {
-		// Decoder errors can include inline credentials; report only the file.
-		if err = decodeYAML(data, &config); err != nil {
-			return config, fmt.Errorf("invalid YAML configuration: %s", path)
+		config, err = decodeServerYAML(data, path)
+		if err != nil {
+			return config, err
 		}
 		base := filepath.Dir(path)
 		if config.Listen == "" {
@@ -111,6 +112,46 @@ func readConfig(path string) (Config, error) {
 		return config, err
 	}
 	return validateConfig(config)
+}
+
+func decodeServerYAML(data []byte, path string) (Config, error) {
+	// Decoder errors can include inline credentials; report only the file.
+	var settings struct {
+		Config                 `yaml:",inline"`
+		GatewayHostPrivateKey  string `yaml:"gateway_host_private_key"`
+		ClientAuthorizedKeys   string `yaml:"client_authorized_keys"`
+		BackendLoginPrivateKey string `yaml:"backend_login_private_key"`
+		BackendKnownHosts      string `yaml:"backend_known_hosts"`
+	}
+	if err := decodeYAML(data, &settings); err != nil {
+		return Config{}, fmt.Errorf("invalid YAML configuration: %s", path)
+	}
+	config := settings.Config
+	if err := setSSHPath(&config.HostKey, settings.GatewayHostPrivateKey, "gateway_host_private_key"); err != nil {
+		return Config{}, err
+	}
+	if err := setSSHPath(&config.AuthorizedKeys, settings.ClientAuthorizedKeys, "client_authorized_keys"); err != nil {
+		return Config{}, err
+	}
+	if err := setSSHPath(&config.BackendKey, settings.BackendLoginPrivateKey, "backend_login_private_key"); err != nil {
+		return Config{}, err
+	}
+	if err := setSSHPath(&config.KnownHosts, settings.BackendKnownHosts, "backend_known_hosts"); err != nil {
+		return Config{}, err
+	}
+	return config, nil
+}
+
+// Each role accepts either its original YAML field or its more descriptive name.
+func setSSHPath(path *string, rolePath, roleName string) error {
+	if rolePath == "" {
+		return nil
+	}
+	if *path != "" {
+		return fmt.Errorf("configure only one spelling of %s", roleName)
+	}
+	*path = rolePath
+	return nil
 }
 
 func validateConfig(config Config) (Config, error) {
@@ -175,8 +216,10 @@ func relativePath(base, value, fallback string) string {
 	return filepath.Join(base, value)
 }
 
+const maxYAMLFileBytes = 1 << 20 // 1 MiB
+
 func decodeYAML(data []byte, out any) error {
-	if len(data) > 1<<20 {
+	if len(data) > maxYAMLFileBytes {
 		return fmt.Errorf("YAML file too large")
 	}
 	decoder := yaml.NewDecoder(bytes.NewReader(data))

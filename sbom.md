@@ -1,16 +1,16 @@
 # Software bill of materials
 
-Generated 2026-10-14 with Syft 1.54.1. Host inventory toolchain: `go version go1.27.2 linux/amd64`.
+Generated 2026-11-23 with Syft 1.54.1. Host inventory toolchain: `go version go1.26.9 linux/amd64`.
 
 ## Scope and provenance
 
 This snapshot covers the exact selected Go module graph, the modules imported by the Linux executable, and packages detected in the built runtime container. Versions are observed or selected versions, not recommendations. Go modules are not upgraded by this report.
 
 - Go modules: **44**, of which **12** are imported by the executable. The remaining graph modules are not automatically linked into it.
-- `go.mod` SHA256: `a3d67bbe0ae423703bcb52cb6001d12d07e64bdd35753079fa747da837648065`.
-- `go.sum` SHA256: `6f9b7532480dbb7e86f9fa437f43532ba07c7e889d95dac174d6d8f0b6dba510`.
-- Runtime image ID: `sha256:7db3db386865953c6ff574d7ccdfa520fd6df45c31d14826eb860ea73f75bcd5`.
-- Exported OCI manifest digest: `sha256:001c0df346c024d54bf630d94851ddb22c6a61b40e5cc43eb81ed7db253ddc6e`.
+- `go.mod` SHA256: `5d1e787c68a20fa57d96256ac4c0e483999d4c730bb73d5f5850e08ce0faf267`.
+- `go.sum` SHA256: `bf669b16d00e7aa10169d3e8dd011261bc741497e327d9cc8d1ca5fc43984438`.
+- Runtime image ID: `sha256:ebea57c4327964cdb6e0088c382b3513d77710d6f1f1342409332c10ff5b7e6b`.
+- Exported OCI manifest digest: `sha256:ed47809ca8bfc51ff2da85aa653012b8587e3f9c0fe0900479992b718d5a0845`.
 - Runtime image platform: `linux/amd64`.
 
 The image was built from [Containerfile](Containerfile). Its Go builder and Node base tags are mutable, so rebuilds can change the toolchain, OS packages and bundled npm versions. This inventories the final runtime image, not the discarded build image or the host OS. Exporting to OCI can change the manifest digest while preserving the image config ID.
@@ -37,8 +37,8 @@ Precompiled Codex, Node and other native binaries may contain components without
 | [github.com/prometheus/common](https://pkg.go.dev/github.com/prometheus/common@v0.72.0?tab=licenses) | v0.72.0 | Transitive import | Apache-2.0 | LICENSE; NOTICE |
 | [github.com/prometheus/procfs](https://pkg.go.dev/github.com/prometheus/procfs@v0.22.0?tab=licenses) | v0.22.0 | Transitive import | Apache-2.0 | LICENSE; NOTICE |
 | [go.yaml.in/yaml/v3](https://pkg.go.dev/go.yaml.in/yaml/v3@v3.0.5?tab=licenses) | v3.0.5 | Direct | Apache-2.0; MIT | LICENSE; NOTICE |
-| [golang.org/x/crypto](https://pkg.go.dev/golang.org/x/crypto@v0.58.0?tab=licenses) | v0.58.0 | Direct | BSD-3-Clause | LICENSE |
-| [golang.org/x/sys](https://pkg.go.dev/golang.org/x/sys@v0.49.0?tab=licenses) | v0.49.0 | Transitive import | BSD-3-Clause | LICENSE |
+| [golang.org/x/crypto](https://pkg.go.dev/golang.org/x/crypto@v0.59.0?tab=licenses) | v0.59.0 | Direct | BSD-3-Clause | LICENSE |
+| [golang.org/x/sys](https://pkg.go.dev/golang.org/x/sys@v0.50.0?tab=licenses) | v0.50.0 | Transitive import | BSD-3-Clause | LICENSE |
 | [google.golang.org/protobuf](https://pkg.go.dev/google.golang.org/protobuf@v1.36.12?tab=licenses) | v1.36.12 | Transitive import | BSD-3-Clause | LICENSE |
 | [mvdan.cc/sh/v3](https://pkg.go.dev/mvdan.cc/sh/v3@v3.14.1?tab=licenses) | v3.14.1 | Direct | BSD-3-Clause | LICENSE |
 
@@ -58,7 +58,7 @@ Precompiled Codex, Node and other native binaries may contain components without
 | [github.com/jpillora/backoff](https://pkg.go.dev/github.com/jpillora/backoff@v1.0.0?tab=licenses) | v1.0.0 | Graph only | MIT | LICENSE |
 | [github.com/json-iterator/go](https://pkg.go.dev/github.com/json-iterator/go@v1.1.12?tab=licenses) | v1.1.12 | Graph only | MIT | LICENSE |
 | [github.com/julienschmidt/httprouter](https://pkg.go.dev/github.com/julienschmidt/httprouter@v1.3.0?tab=licenses) | v1.3.0 | Graph only | BSD-3-Clause | LICENSE |
-| [github.com/klauspost/compress](https://pkg.go.dev/github.com/klauspost/compress@v1.20.1?tab=licenses) | v1.20.1 | Graph only | Apache-2.0; BSD-3-Clause; MIT | LICENSE; gzhttp/LICENSE; internal/lz4ref/LICENSE; internal/snapref/LICENSE; s2/LICENSE; s2/cmd/internal/filepathx/LICENSE; s2/cmd/internal/readahead/LICENSE; snappy/LICENSE; snappy/xerial/LICENSE; zstd/internal/xxhash/LICENSE.txt |
+| [github.com/klauspost/compress](https://pkg.go.dev/github.com/klauspost/compress@v1.20.2?tab=licenses) | v1.20.2 | Graph only | Apache-2.0; BSD-3-Clause; MIT | LICENSE; gzhttp/LICENSE; internal/lz4ref/LICENSE; internal/snapref/LICENSE; s2/LICENSE; s2/cmd/internal/filepathx/LICENSE; s2/cmd/internal/readahead/LICENSE; snappy/LICENSE; snappy/xerial/LICENSE; zstd/internal/xxhash/LICENSE.txt |
 | [github.com/kr/pretty](https://pkg.go.dev/github.com/kr/pretty@v0.3.1?tab=licenses) | v0.3.1 | Graph only | MIT | License |
 | [github.com/kr/text](https://pkg.go.dev/github.com/kr/text@v0.2.0?tab=licenses) | v0.2.0 | Graph only | MIT | License |
 | [github.com/kylelemons/godebug](https://pkg.go.dev/github.com/kylelemons/godebug@v1.1.0?tab=licenses) | v1.1.0 | Graph only | Apache-2.0 | LICENSE |
@@ -71,11 +71,11 @@ Precompiled Codex, Node and other native binaries may contain components without
 | [go.uber.org/goleak](https://pkg.go.dev/go.uber.org/goleak@v1.3.0?tab=licenses) | v1.3.0 | Graph only | MIT | LICENSE |
 | [go.yaml.in/yaml/v2](https://pkg.go.dev/go.yaml.in/yaml/v2@v2.4.4?tab=licenses) | v2.4.4 | Graph only | Apache-2.0; MIT | LICENSE; LICENSE.libyaml; NOTICE |
 | [golang.org/x/mod](https://pkg.go.dev/golang.org/x/mod@v0.29.0?tab=licenses) | v0.29.0 | Graph only | BSD-3-Clause | LICENSE |
-| [golang.org/x/net](https://pkg.go.dev/golang.org/x/net@v0.60.0?tab=licenses) | v0.60.0 | Graph only | BSD-3-Clause | LICENSE |
+| [golang.org/x/net](https://pkg.go.dev/golang.org/x/net@v0.62.0?tab=licenses) | v0.62.0 | Graph only | BSD-3-Clause | LICENSE |
 | [golang.org/x/oauth2](https://pkg.go.dev/golang.org/x/oauth2@v0.37.0?tab=licenses) | v0.37.0 | Graph only | BSD-3-Clause | LICENSE |
 | [golang.org/x/sync](https://pkg.go.dev/golang.org/x/sync@v0.22.0?tab=licenses) | v0.22.0 | Graph only | BSD-3-Clause | LICENSE |
-| [golang.org/x/term](https://pkg.go.dev/golang.org/x/term@v0.47.0?tab=licenses) | v0.47.0 | Graph only | BSD-3-Clause | LICENSE |
-| [golang.org/x/text](https://pkg.go.dev/golang.org/x/text@v0.43.0?tab=licenses) | v0.43.0 | Graph only | BSD-3-Clause | LICENSE |
+| [golang.org/x/term](https://pkg.go.dev/golang.org/x/term@v0.48.0?tab=licenses) | v0.48.0 | Graph only | BSD-3-Clause | LICENSE |
+| [golang.org/x/text](https://pkg.go.dev/golang.org/x/text@v0.44.0?tab=licenses) | v0.44.0 | Graph only | BSD-3-Clause | LICENSE |
 | [golang.org/x/tools](https://pkg.go.dev/golang.org/x/tools@v0.38.0?tab=licenses) | v0.38.0 | Graph only | BSD-3-Clause | LICENSE |
 | [mvdan.cc/editorconfig](https://pkg.go.dev/mvdan.cc/editorconfig@v0.3.0?tab=licenses) | v0.3.0 | Graph only | BSD-3-Clause | LICENSE |
 
@@ -83,7 +83,7 @@ The Go runtime and standard library are also part of the executable (BSD-3-Claus
 
 ## Container runtime inventory
 
-The recipe installs `@openai/codex@0.162.1` (Apache-2.0), Node.js (MIT plus bundled notices), npm (Artistic-2.0 plus dependencies), and Debian packages. The table below includes the versions and license metadata actually detected in this image. See [Codex's license](https://github.com/openai/codex/blob/rust-v0.162.1/LICENSE), [Node's license and bundled notices](https://github.com/nodejs/node/blob/v22.23.3/LICENSE), and [npm's license](https://github.com/npm/cli/blob/v10.9.9/LICENSE).
+The recipe installs `@openai/codex@0.162.1` (Apache-2.0), Node.js (MIT plus bundled notices), npm (Artistic-2.0 plus dependencies), and Debian packages. The table below includes the versions and license metadata actually detected in this image. See [Codex's license](https://github.com/openai/codex/blob/rust-v0.162.1/LICENSE), [Node's license and bundled notices](https://github.com/nodejs/node/blob/v22.23.4/LICENSE), and [npm's license](https://github.com/npm/cli/blob/v10.9.9/LICENSE).
 
 Detected **295 distinct package/version/license records**. The Go rows here describe embedded binary metadata, not additional copies of the source modules.
 
@@ -92,14 +92,14 @@ Detected **295 distinct package/version/license records**. The Go rows here desc
 
 | Type | Package | Version | License metadata | Evidence path in image |
 | --- | --- | --- | --- | --- |
-| binary | node | 22.23.3 | NOASSERTION | /usr/local/bin/node |
+| binary | node | 22.23.4 | NOASSERTION | /usr/local/bin/node |
 | deb | adduser | 3.134 | GPL-2.0-only; GPL-2.0-or-later | /usr/share/doc/adduser/copyright |
-| deb | apt | 2.6.1 | BSD-3-Clause; Expat; GPL-2.0-only; GPL-2.0-or-later | /usr/share/doc/apt/copyright |
+| deb | apt | 2.6.2 | BSD-3-Clause; Expat; GPL-2.0-only; GPL-2.0-or-later | /usr/share/doc/apt/copyright |
 | deb | base-files | 12.4+deb12u15 | NOASSERTION | /usr/share/doc/base-files/copyright |
 | deb | base-passwd | 3.6.1 | GPL-2.0-only; public-domain | /usr/share/doc/base-passwd/copyright |
 | deb | bash | 5.2.15-2+b13 | BSD-4-Clause-UC; GFDL-1.3-only; GFDL-NIV-1.3; GPL-2.0-only; GPL-2.0-or-later; GPL-3.0-only; GPL-3.0-or-later; Latex2e; MIT-like; permissive | /usr/share/doc/bash/copyright |
 | deb | bsdutils | 1:2.38.1-5+deb12u3 | BSD-3-Clause; BSD-4-Clause; BSLA; GPL-2.0-only; GPL-2.0-or-later; GPL-3.0-only; GPL-3.0-or-later; LGPL; LGPL-2.0-only; LGPL-2.0-or-later; LGPL-2.1-only; LGPL-2.1-or-later; LGPL-3.0-only; LGPL-3.0-or-later; MIT; public-domain | /usr/share/doc/bsdutils/copyright |
-| deb | ca-certificates | 20250419~deb12u1 | GPL-2.0-only; GPL-2.0-or-later; MPL-2.0 | /usr/share/doc/ca-certificates/copyright |
+| deb | ca-certificates | 20250419~deb12u2 | GPL-2.0-only; GPL-2.0-or-later; MPL-2.0 | /usr/share/doc/ca-certificates/copyright |
 | deb | coreutils | 9.1-1 | BSD-4-Clause-UC; FSFULLR; GFDL-1.3-only; GFDL-NIV-1.3; GPL-3.0-only; GPL-3.0-or-later; ISC | /usr/share/doc/coreutils/copyright |
 | deb | dash | 0.5.12-2 | BSD-3-Clause; GPL-2.0-only; GPL-2.0-or-later; public-domain | /usr/share/doc/dash/copyright |
 | deb | debconf | 1.5.82 | BSD-2-Clause | /usr/share/doc/debconf/copyright |
@@ -116,7 +116,7 @@ Detected **295 distinct package/version/license records**. The Go rows here desc
 | deb | hostname | 3.23+nmu1 | GPL-2.0-only | /usr/share/doc/hostname/copyright |
 | deb | init-system-helpers | 1.65.2+deb12u1 | BSD-3-Clause; GPL-2.0-only; GPL-2.0-or-later | /usr/share/doc/init-system-helpers/copyright |
 | deb | libacl1 | 2.3.1-3 | GPL-2.0-only; GPL-2.0-or-later; LGPL-2.0-or-later; LGPL-2.1-only | /usr/share/doc/libacl1/copyright |
-| deb | libapt-pkg6.0 | 2.6.1 | BSD-3-Clause; Expat; GPL-2.0-only; GPL-2.0-or-later | /usr/share/doc/libapt-pkg6.0/copyright |
+| deb | libapt-pkg6.0 | 2.6.2 | BSD-3-Clause; Expat; GPL-2.0-only; GPL-2.0-or-later | /usr/share/doc/libapt-pkg6.0/copyright |
 | deb | libattr1 | 1:2.5.1-4 | GPL-2.0-only; GPL-2.0-or-later; LGPL-2.0-or-later; LGPL-2.1-only | /usr/share/doc/libattr1/copyright |
 | deb | libaudit-common | 1:3.0.9-1 | GPL-1.0-only; GPL-2.0-only; LGPL-2.1-only | /usr/share/doc/libaudit-common/copyright |
 | deb | libaudit1 | 1:3.0.9-1 | GPL-1.0-only; GPL-2.0-only; LGPL-2.1-only | /usr/share/doc/libaudit1/copyright |
@@ -157,7 +157,7 @@ Detected **295 distinct package/version/license records**. The Go rows here desc
 | deb | libsepol2 | 3.4-2.1 | GPL-2.0-only; GPL-2.0-or-later; LGPL-2.1-only; LGPL-2.1-or-later; Zlib | /usr/share/doc/libsepol2/copyright |
 | deb | libsmartcols1 | 2.38.1-5+deb12u3 | BSD-3-Clause; BSD-4-Clause; BSLA; GPL-2.0-only; GPL-2.0-or-later; GPL-3.0-only; GPL-3.0-or-later; LGPL; LGPL-2.0-only; LGPL-2.0-or-later; LGPL-2.1-only; LGPL-2.1-or-later; LGPL-3.0-only; LGPL-3.0-or-later; MIT; public-domain | /usr/share/doc/libsmartcols1/copyright |
 | deb | libss2 | 1.47.0-2+b2 | Apache-2.0; BSD-3-Clause; GPL; GPL-2.0-only; GPL-2.0-or-later; ISC; Kazlib; LGPL-2.0-only; Latex2e | /usr/share/doc/libss2/copyright |
-| deb | libssl3 | 3.0.22-1~deb12u1 | Apache-2.0; Artistic; GPL-1.0-only; GPL-1.0-or-later | /usr/share/doc/libssl3/copyright |
+| deb | libssl3 | 3.0.22-1~deb12u2 | Apache-2.0; Artistic; GPL-1.0-only; GPL-1.0-or-later | /usr/share/doc/libssl3/copyright |
 | deb | libstdc++6 | 12.2.0-14+deb12u1 | NOASSERTION | /usr/share/doc/gcc-12-base/copyright |
 | deb | libsystemd0 | 252.39-1~deb12u2 | CC0-1.0; Expat; GPL-2.0-only; GPL-2.0-or-later; LGPL-2.1-only; LGPL-2.1-or-later; public-domain | /usr/share/doc/libsystemd0/copyright |
 | deb | libtasn1-6 | 4.19.0-2+deb12u1 | NOASSERTION | /usr/share/doc/libtasn1-6/copyright |
@@ -173,13 +173,13 @@ Detected **295 distinct package/version/license records**. The Go rows here desc
 | deb | mount | 2.38.1-5+deb12u3 | BSD-3-Clause; BSD-4-Clause; BSLA; GPL-2.0-only; GPL-2.0-or-later; GPL-3.0-only; GPL-3.0-or-later; LGPL; LGPL-2.0-only; LGPL-2.0-or-later; LGPL-2.1-only; LGPL-2.1-or-later; LGPL-3.0-only; LGPL-3.0-or-later; MIT; public-domain | /usr/share/doc/mount/copyright |
 | deb | ncurses-base | 6.4-4 | BSD-3-Clause; MIT/X11; X11 | /usr/share/doc/ncurses-base/copyright |
 | deb | ncurses-bin | 6.4-4 | BSD-3-Clause; MIT/X11; X11 | /usr/share/doc/ncurses-bin/copyright |
-| deb | openssl | 3.0.22-1~deb12u1 | Apache-2.0; Artistic; GPL-1.0-only; GPL-1.0-or-later | /usr/share/doc/openssl/copyright |
+| deb | openssl | 3.0.22-1~deb12u2 | Apache-2.0; Artistic; GPL-1.0-only; GPL-1.0-or-later | /usr/share/doc/openssl/copyright |
 | deb | passwd | 1:4.13+dfsg1-1+deb12u2 | BSD-3-Clause; GPL-1.0-only; GPL-2.0-only; GPL-2.0-or-later; public-domain | /usr/share/doc/passwd/copyright |
-| deb | perl-base | 5.36.0-7+deb12u3 | Artistic; Artistic-2.0; Artistic-dist; BSD-3-Clause; BSD-3-clause-GENERIC; BSD-3-clause-with-weird-numbering; BSD-4-clause-POWERDOG; BZIP; DONT-CHANGE-THE-GPL; Expat; GPL-1.0-only; GPL-1.0-or-later; GPL-2.0-only; GPL-2.0-or-later; GPL-3+-WITH-BISON-EXCEPTION; HSIEH-BSD; HSIEH-DERIVATIVE; LGPL-2.1-only; REGCOMP; REGCOMP,; RRA-KEEP-THIS-NOTICE; SDBM-PUBLIC-DOMAIN; TEXT-TABS; Unicode; Zlib | /usr/share/doc/perl-base/copyright |
+| deb | perl-base | 5.36.0-7+deb12u4 | Artistic; Artistic-2.0; Artistic-dist; BSD-3-Clause; BSD-3-clause-GENERIC; BSD-3-clause-with-weird-numbering; BSD-4-clause-POWERDOG; BZIP; DONT-CHANGE-THE-GPL; Expat; GPL-1.0-only; GPL-1.0-or-later; GPL-2.0-only; GPL-2.0-or-later; GPL-3+-WITH-BISON-EXCEPTION; HSIEH-BSD; HSIEH-DERIVATIVE; LGPL-2.1-only; REGCOMP; REGCOMP,; RRA-KEEP-THIS-NOTICE; SDBM-PUBLIC-DOMAIN; TEXT-TABS; Unicode; Zlib | /usr/share/doc/perl-base/copyright |
 | deb | sed | 4.9-1+deb12u1 | BSD-4-Clause-UC; BSL-1.0; GFDL-1.3-only; GFDL-NIV-1.3+; GPL-3.0-only; GPL-3.0-or-later; ISC; X11; pcre | /usr/share/doc/sed/copyright |
 | deb | sysvinit-utils | 3.06-4 | GPL-2.0-only; GPL-2.0-or-later; GPL-3.0-only | /usr/share/doc/sysvinit-utils/copyright |
 | deb | tar | 1.34+dfsg-1.2+deb12u1 | GPL-2.0-only; GPL-2.0-or-later; GPL-3.0-only; GPL-3.0-or-later; LGPL-3.0-only; LGPL-3.0-or-later | /usr/share/doc/tar/copyright |
-| deb | tzdata | 2026c-0+deb12u1 | public-domain | /usr/share/doc/tzdata/copyright |
+| deb | tzdata | 2026f-0+deb12u1 | public-domain | /usr/share/doc/tzdata/copyright |
 | deb | usr-is-merged | 37~deb12u1 | GPL-2.0-only; GPL-2.0-or-later | /usr/share/doc/usr-is-merged/copyright |
 | deb | util-linux | 2.38.1-5+deb12u3 | BSD-3-Clause; BSD-4-Clause; BSLA; GPL-2.0-only; GPL-2.0-or-later; GPL-3.0-only; GPL-3.0-or-later; LGPL; LGPL-2.0-only; LGPL-2.0-or-later; LGPL-2.1-only; LGPL-2.1-or-later; LGPL-3.0-only; LGPL-3.0-or-later; MIT; public-domain | /usr/share/doc/util-linux/copyright |
 | deb | util-linux-extra | 2.38.1-5+deb12u3 | BSD-3-Clause; BSD-4-Clause; BSLA; GPL-2.0-only; GPL-2.0-or-later; GPL-3.0-only; GPL-3.0-or-later; LGPL; LGPL-2.0-only; LGPL-2.0-or-later; LGPL-2.1-only; LGPL-2.1-or-later; LGPL-3.0-only; LGPL-3.0-or-later; MIT; public-domain | /usr/share/doc/util-linux-extra/copyright |
@@ -192,8 +192,8 @@ Detected **295 distinct package/version/license records**. The Go rows here desc
 | go-module | github.com/prometheus/common | v0.72.0 | Apache-2.0 | /usr/local/bin/ssh-ballpit |
 | go-module | github.com/prometheus/procfs | v0.22.0 | Apache-2.0 | /usr/local/bin/ssh-ballpit |
 | go-module | go.yaml.in/yaml/v3 | v3.0.5 | Apache-2.0; MIT | /usr/local/bin/ssh-ballpit |
-| go-module | golang.org/x/crypto | v0.58.0 | BSD-3-Clause | /usr/local/bin/ssh-ballpit |
-| go-module | golang.org/x/sys | v0.49.0 | BSD-3-Clause | /usr/local/bin/ssh-ballpit |
+| go-module | golang.org/x/crypto | v0.59.0 | BSD-3-Clause | /usr/local/bin/ssh-ballpit |
+| go-module | golang.org/x/sys | v0.50.0 | BSD-3-Clause | /usr/local/bin/ssh-ballpit |
 | go-module | google.golang.org/protobuf | v1.36.12 | BSD-3-Clause | /usr/local/bin/ssh-ballpit |
 | go-module | mvdan.cc/sh/v3 | v3.14.1 | BSD-3-Clause | /usr/local/bin/ssh-ballpit |
 | go-module | ssh-ballpit | UNKNOWN | Unlicense (project declaration) | /usr/local/bin/ssh-ballpit |

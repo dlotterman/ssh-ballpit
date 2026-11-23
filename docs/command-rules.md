@@ -21,8 +21,32 @@ overwrite existing files.
 
 Invalid YAML, unknown fields, duplicate keys, multiple documents, non-string or
 empty patterns, invalid regexes, and unreadable files stop startup. Files are
-limited to 1 MiB and read once at startup; restart after changes. There are no
-extra server settings.
+limited to 1 MiB and read once at startup; restart after changes. Both `serve` and `check` accept repeatable `--whitelist-file` and
+`--blacklist-file` flags. Flag paths resolve from the process working directory.
+Each flag adds patterns to the corresponding default list. A missing explicitly
+named file is an error. Every blacklist takes precedence over every whitelist.
+
+```sh
+ssh-ballpit serve --config config/server.yaml \
+  --whitelist-file rules/systemd.yaml --whitelist-file rules/storage.yaml \
+  --blacklist-file rules/site.yaml --blacklist-file rules/maintenance.yaml
+```
+
+### Collect a suggested whitelist
+
+Pass `serve --suggest-whitelist DIR` with an existing private directory outside
+`providers/`. Each start creates a fresh mode-0600 `suggested-whitelist-*.yaml`
+and logs its path. After a model-approved command (including a cache hit) runs
+and returns an exit status, the daemon records it once if it qualifies for
+simple-command whitelisting. A nonzero backend exit still counts as execution.
+Existing whitelist matches, denials and backend failures produce no suggestions.
+
+The file contains exact command patterns with regex metacharacters escaped.
+Command arguments can contain secrets even when command logging is off.
+Inspect the file before using it with `--whitelist-file` on a later start.
+Promoting a suggestion makes it available to **all** mapped users. Collection
+stops adding entries that would exceed the 1 MiB rule-file limit and logs a
+write warning. Recording errors leave the prior file and SSH result intact.
 
 Example `whitelist.yaml`:
 
@@ -42,6 +66,38 @@ patterns:
 
 The source files are [`examples/whitelist.yaml`](../examples/whitelist.yaml) and
 [`examples/blacklist.yaml`](../examples/blacklist.yaml).
+
+For a broader opt-in set of unprivileged system diagnostics, see
+[`examples/debug_whitelist.yaml`](../examples/debug_whitelist.yaml). Copy only
+the patterns you want into `config/whitelist.yaml`; the extra example file is
+not loaded by the daemon. It includes bounded `ss -N NAME` and `ip -n NAME`
+forms for named network namespaces. Those commands may need permissions that
+the backend account does not have. `ss -p` can likewise omit processes owned
+by other users. The example uses `df -hT` for filesystem capacity and `du -cs`
+for directory totals because `df -cs` is not a valid `df` invocation.
+
+### Extended debug example
+
+[`debug_whitelist_extended.yaml`](../examples/debug_whitelist_extended.yaml) includes
+the short debug rules along with system and user unit dependencies, selected
+`systemctl show` properties, current and previous boot journals, SMART identity,
+USB power, XFS error settings, device-mapper relationships and GPU counters.
+The last section provides commented templates for checks tied to local paths or
+services. Edit those paths and names before enabling a template. The file is
+opt-in and applies to every mapped user. Unit definitions, command lines and
+journals can contain sensitive values.
+
+From the checkout, preview a decision using the same rule file you plan to serve:
+
+```sh
+ssh-ballpit check --config config/server.yaml --user alice \
+  --whitelist-file examples/debug_whitelist_extended.yaml \
+  --command 'journalctl -k -b --no-pager -o short-iso -n 50'
+```
+
+A whitelist match reports `"source":"whitelist"`. To enable the file, pass the
+same flag to `serve`. For a container, copy the file into the mounted config
+directory and use its container path, such as `/config/debug_whitelist_extended.yaml`.
 
 ## Matching
 

@@ -19,7 +19,7 @@ import (
 
 var examples = configexamples.Files
 
-const usage = "usage: ssh-ballpit configure|host-key|login-openai|check|providers-test|serve [flags]"
+const usage = "usage: ssh-ballpit configure|host-key|login-openai|check|providers-check|providers-test|serve [flags]"
 
 type cliOptions struct {
 	configPath     string
@@ -30,6 +30,9 @@ type cliOptions struct {
 	codexHome      string
 	codexBinary    string
 	hostKeyOutput  string
+	whitelistFiles []string
+	blacklistFiles []string
+	suggestionsDir string
 }
 
 // checkOutput is shared by local-policy and model-review CLI responses.
@@ -38,6 +41,18 @@ type checkOutput struct {
 	Safe      bool     `json:"safe"`
 	Source    string   `json:"source,omitempty"`
 	Reviewers []Result `json:"reviewers"`
+}
+
+type providerCheckResult struct {
+	Name  string `json:"name"`
+	Kind  string `json:"kind"`
+	OK    bool   `json:"ok"`
+	Error string `json:"error,omitempty"`
+}
+
+type providersCheckOutput struct {
+	OK        bool                  `json:"ok"`
+	Providers []providerCheckResult `json:"providers"`
 }
 
 func main() {
@@ -54,7 +69,7 @@ func run(args []string, output io.Writer) error {
 	}
 	action := args[0]
 	switch action {
-	case "configure", "host-key", "login-openai", "check", "providers-test", "serve":
+	case "configure", "host-key", "login-openai", "check", "providers-check", "providers-test", "serve":
 	default:
 		return fmt.Errorf("unknown subcommand %q", action)
 	}
@@ -84,17 +99,57 @@ func run(args []string, output io.Writer) error {
 	if options.authorizedKeys != "" {
 		config.AuthorizedKeys = options.authorizedKeys
 	}
+	if err := config.commandRules.addFiles(options.whitelistFiles, options.blacklistFiles); err != nil {
+		return err
+	}
 	switch action {
 	case "serve":
 		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
+		if options.suggestionsDir != "" {
+			config.suggestions, err = newSuggestions(options.suggestionsDir)
+			if err != nil {
+				return err
+			}
+			slog.Info("writing whitelist suggestions", "path", config.suggestions.path)
+		}
 		return serve(ctx, config)
 	case "check":
 		return checkCommand(ctx, config, options.user, options.command, output)
+	case "providers-check":
+		return checkProviders(ctx, config, output)
 	case "providers-test":
 		// Diagnostics always call every provider, regardless of command rules.
 		return reviewCommand(ctx, config, "provider-test", "printf '%s\\n' hello", output)
 	}
 	return fmt.Errorf("unhandled subcommand %q", action)
+}
+
+// checkProviders probes the complete review path for each configured provider.
+// A valid denial still proves the provider was reachable and authenticated.
+func checkProviders(ctx context.Context, config Config, output io.Writer) error {
+	results, _ := review(ctx, config, "provider-check", "uname -a")
+	response := providersCheckOutput{
+		OK:        len(results) > 0,
+		Providers: make([]providerCheckResult, len(results)),
+	}
+	for i, result := range results {
+		response.Providers[i] = providerCheckResult{
+			Name:  config.Providers[i].Name,
+			Kind:  config.Providers[i].Kind,
+			OK:    result.Error == "",
+			Error: result.Error,
+		}
+		if result.Error != "" {
+			response.OK = false
+		}
+	}
+	if err := json.NewEncoder(output).Encode(response); err != nil {
+		return fmt.Errorf("write provider check result: %w", err)
+	}
+	if !response.OK {
+		return errors.New("provider check failed")
+	}
+	return nil
 }
 
 func parseCLIOptions(action string, args []string) (cliOptions, error) {
@@ -113,6 +168,19 @@ func parseCLIOptions(action string, args []string) (cliOptions, error) {
 	flags.StringVar(&options.codexHome, "codex-home", "", "dedicated private Codex authentication directory")
 	flags.StringVar(&options.codexBinary, "codex-binary", "codex", "Codex executable")
 	flags.StringVar(&options.hostKeyOutput, "out", "host_key", "new host key file")
+	if action == "check" || action == "serve" {
+		flags.Func("whitelist-file", "additional whitelist YAML path (repeatable)", func(path string) error {
+			options.whitelistFiles = append(options.whitelistFiles, path)
+			return nil
+		})
+		flags.Func("blacklist-file", "additional blacklist YAML path (repeatable)", func(path string) error {
+			options.blacklistFiles = append(options.blacklistFiles, path)
+			return nil
+		})
+	}
+	if action == "serve" {
+		flags.StringVar(&options.suggestionsDir, "suggest-whitelist", "", "write a new suggested whitelist YAML in this directory")
+	}
 	if err := flags.Parse(args); err != nil {
 		return options, err
 	}

@@ -15,7 +15,7 @@ Connection to 192.168.50.167 closed by remote host.
 **Bad** Agent:
 ```
 $ ssh -p 2222 system_user@192.168.50.167 'rm -rf /'
-denied: every configured reviewer must approve
+denied: a reviewer denied the command
 Connection to 192.168.50.167 closed by remote host
 ```
 
@@ -79,14 +79,30 @@ podman run --pull=always --rm --userns=keep-id \
 ```
 
 Edit `config/server.yaml` with your SSH username and client key fingerprint.
-Put these files in `config/`:
+With the starter YAML, provide three files under `config/`.
 
-- `authorized_keys`: client public keys permitted to use the gateway.
-- `backend_key`: private key already accepted by your local sshd; use mode `0600`.
-- `known_hosts`: verified host key for your local sshd.
+| YAML setting | File to provide | Contents |
+| --- | --- | --- |
+| `client_authorized_keys` | `authorized_keys` | Public keys of clients allowed to connect to the gateway. |
+| `backend_login_private_key` | `backend_key` | The gateway's private login key, mode `0600`. Its public half must be authorized for the mapped account on the local sshd. |
+| `backend_known_hosts` | `known_hosts` | The verified host key of that local sshd, in OpenSSH known_hosts format. |
+
+The gateway generates its own identity at `config/state/host_key` on first
+start. Set `gateway_host_private_key` to choose a different path, and preserve
+that key across restarts so clients can verify the gateway.
+
+Run `providers-check` with the same configuration to verify that every provider
+file can make an authenticated review request. It reports each provider's status
+as JSON and never executes the diagnostic command.
 
 `configure` also creates example [whitelist and blacklist rules](docs/command-rules.md).
-Edit or remove either file before starting the gateway.
+Edit or remove either file before starting the gateway. An optional
+[extended diagnostic whitelist](examples/debug_whitelist_extended.yaml) covers
+systemd, journals, storage, USB, networking and GPU checks. Use repeatable
+`--whitelist-file` and `--blacklist-file` flags to layer additional files.
+`serve --suggest-whitelist DIR` writes reviewable exact-command rules for
+executed commands. Set `log_commands: true` to read commands alongside their
+review decisions and backend results in the daemon logs.
 
 ### Providers
 
@@ -117,8 +133,14 @@ podman run --rm --name ssh-ballpit --userns=keep-id --network=host \
 ssh -T -p 2222 alice@127.0.0.1 'uname -a'
 ```
 
-The gateway host key is generated once in `config/state/host_key`. Provider and
-command-rule files are read at startup; restart after editing them. The default
+For unattended diagnostics, set the gateway port, frontend user and client
+identity in a dedicated SSH host alias. Use `ssh -T -o BatchMode=yes ALIAS 'uname -a'`
+with one exec request per connection. The backend gets EOF on stdin. If the client
+reports `Permission denied (publickey)`, check the client key and frontend user.
+If it reports `execution failed`, inspect the daemon's `backend failed` event
+for the failing stage before changing keys.
+
+Provider and command-rule files are read at startup; restart after editing them. The default
 listener is local only; change `listen` in `server.yaml` to accept remote clients.
 
 These commands use rootless Podman on Linux. The single bind mount keeps
